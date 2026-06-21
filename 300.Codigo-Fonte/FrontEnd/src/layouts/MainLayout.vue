@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 
 import { useAuth } from '@/composables/useAuth';
+import { DesignSystemBrand, DesignSystemLayout } from '@/constants/design-system';
 
 const drawer = ref(true);
 const auth = useAuth();
@@ -9,17 +10,28 @@ const { usuario, logout } = auth;
 </script>
 
 <template>
-  <q-layout view="hHh Lpr lFf">
-    <q-header bordered class="bg-white text-dark">
-      <q-toolbar>
-        <q-btn flat round dense icon="menu" @click="drawer = !drawer" />
-        <q-toolbar-title>BGD Clinical</q-toolbar-title>
-        <q-btn flat round icon="account_circle">
+  <q-layout view="hHh Lpr lFf" class="shell-premium">
+    <q-header class="text-dark">
+      <q-toolbar :style="{ minHeight: DesignSystemLayout.headerHeight }">
+        <q-btn
+          flat
+          round
+          dense
+          icon="menu"
+          aria-label="Abrir menu"
+          @click="drawer = !drawer"
+        />
+        <q-toolbar-title class="text-weight-bold">
+          {{ DesignSystemBrand.nome }}
+        </q-toolbar-title>
+        <q-btn flat round icon="account_circle" aria-label="Menu da conta">
           <q-menu>
-            <q-list style="min-width: 220px">
+            <q-list style="min-width: 240px">
               <q-item>
                 <q-item-section>
-                  <q-item-label>{{ usuario?.nome || 'Usuário' }}</q-item-label>
+                  <q-item-label class="text-weight-medium">
+                    {{ usuario?.nome || 'Usuário' }}
+                  </q-item-label>
                   <q-item-label caption>{{ usuario?.email }}</q-item-label>
                 </q-item-section>
               </q-item>
@@ -36,21 +48,25 @@ const { usuario, logout } = auth;
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="drawer" show-if-above bordered :width="260">
+    <q-drawer
+      v-model="drawer"
+      show-if-above
+      :width="DesignSystemLayout.drawerWidth"
+    >
       <div class="drawer-brand">
-        <q-icon name="health_and_safety" color="primary" size="32px" />
+        <q-icon :name="DesignSystemBrand.icone" color="primary" size="28px" />
         <div>
-          <strong>BGD Clinical</strong>
-          <span>Whitelabel</span>
+          <strong>{{ DesignSystemBrand.nome }}</strong>
+          <span>{{ DesignSystemBrand.taglinePadrao }}</span>
         </div>
       </div>
 
       <q-list padding>
         <q-item clickable v-ripple to="/" exact>
           <q-item-section avatar>
-            <q-icon name="dashboard" />
+            <q-icon name="space_dashboard" />
           </q-item-section>
-          <q-item-section>Dashboard</q-item-section>
+          <q-item-section>Início</q-item-section>
         </q-item>
       </q-list>
     </q-drawer>

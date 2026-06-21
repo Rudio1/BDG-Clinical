@@ -14,6 +14,18 @@ export const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/cadastro',
+    component: () => import('@/layouts/AuthLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'cadastro',
+        component: () => import('@/pages/auth/RegisterPage.vue'),
+        meta: { publica: true },
+      },
+    ],
+  },
+  {
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),
     children: [

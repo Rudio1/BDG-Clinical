@@ -15,6 +15,7 @@ Documentação de arquitetura e regras de operação do backend. Leia antes de i
 | [rules/05-exemplo-identidade-login.mdc](./rules/05-exemplo-identidade-login.mdc) | Estrutura de referência do Login |
 | [rules/06-multi-tenant-modulos-auditoria.mdc](./rules/06-multi-tenant-modulos-auditoria.mdc) | Tenant, licenças, permissões e auditoria |
 | [rules/07-appsettings-e-configuracao.mdc](./rules/07-appsettings-e-configuracao.mdc) | AppSettings, Development local e variáveis de ambiente |
+| [rules/08-organizacao-pastas-por-recurso.mdc](./rules/08-organizacao-pastas-por-recurso.mdc) | Subpastas por recurso na WebApi (`Auth/`, `Extensions/Auth/`, etc.) |
 
 ## Referência externa
 

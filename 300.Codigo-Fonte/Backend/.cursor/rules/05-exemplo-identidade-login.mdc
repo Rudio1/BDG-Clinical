@@ -1,53 +1,71 @@
 ---
-description: Estrutura de referência do contexto Identidade — Login e autenticação
-globs: "**/Identidade/**,**/Auth*,**/Login*"
+description: Estrutura de referência do contexto Identity — Login e autenticação
+globs: "**/Identity/**,**/Auth/**,**/Login*"
 alwaysApply: false
 ---
 
-# Exemplo — Contexto Identidade (Login)
+# Exemplo — Contexto Identity (Login)
 
-Login, logout, refresh token e validação de sessão pertencem exclusivamente ao contexto `Identidade`. Não implementar auth dentro de `Core`, `Modulos` ou na raiz de `WebApi`.
+Login, logout, refresh token e validação de sessão pertencem ao contexto `Identity` (conceito de negócio: Identidade). Não implementar auth dentro de `Core`, `Modules` ou na raiz de `WebApi`.
 
 ## Árvore de pastas esperada
 
 ```
 BGD.CLINICAL.Domain/
-  Entities/CoreEntities.cs          → Usuario (entidade compartilhada, comportamento de auth no contexto Identidade)
+  Entities/CoreEntities.cs          → Usuario (entidade compartilhada)
   Enums/TipoUsuario.cs
 
 BGD.CLINICAL.Application/
-  Identidade/
+  Identity/
     Abstractions/
-      ILoginUsuarioService.cs
-      ILogoutUsuarioService.cs
-      IUsuarioRepository.cs
+      ILoginUsersService.cs
+      IRegisterCompaniesService.cs
+      IGetAuthenticatedUsersService.cs
+      IUsersRepository.cs
       ITokenService.cs
-      IGeradorSenhaHash.cs
-    Login/
-      DTOs/
-        LoginRequest.cs
-        LoginResponse.cs
-      LoginUsuarioService.cs
-    Logout/
-      LogoutUsuarioService.cs
-  Common/
-    ResultT.cs
+      IPasswordHashGenerator.cs
+      IAuditLogsService.cs
+    Authentications/
+      LoginUsersService.cs
+    Registrations/
+      RegisterCompaniesService.cs
+    Users/
+      GetAuthenticatedUsersService.cs
+    Dtos/
+      LoginRequest.cs
+      RegisterCompanyRequest.cs
+      AuthResponse.cs
+      AuthenticatedUserDto.cs
+    IdentityConstants.cs
+    AuthenticatedUsersMapper.cs
 
 BGD.CLINICAL.Infra.Data/
   Repositories/
-    Identidade/
-      UsuarioRepository.cs
-  Configurations/
-    ClinicalModelConfigurations.cs  → mapeamento Usuario (ou Identidade/UsuarioConfiguration.cs)
+    Identity/
+      UsersRepository.cs
+  Services/
+    Audits/
+      AuditLogsService.cs
 
 BGD.CLINICAL.Infra.ExternalApis/
-  Identidade/
-    GoogleAuthProvider.cs           → quando auth_provider = Google
+  Identity/
+    GoogleAuthProvider.cs           → fase 2 (OAuth)
 
 BGD.CLINICAL.WebApi/
   Controllers/
-    Identidade/
+    Auth/
       AuthController.cs
+  Extensions/
+    Auth/
+      AuthServiceCollectionExtensions.cs
+  Infrastructure/
+    Auth/
+      JwtSettings.cs
+      JwtTokensService.cs
+      BcryptPasswordHashGenerator.cs
+  Models/
+    Common/
+      ApiResponses.cs
   Middlewares/
     TenantResolutionMiddleware.cs   → resolve empresa_id do token/claim
 ```
@@ -56,52 +74,43 @@ BGD.CLINICAL.WebApi/
 
 | Componente | Faz | Não faz |
 |------------|-----|---------|
-| `LoginUsuarioService` | Valida credenciais, emite token, registra auditoria LOGIN | Validar licença de módulo |
-| `Modulos/ValidarLicencaService` | Verifica `LicencaModulo` | Autenticar usuário |
-| `AuthController` | Expõe endpoints `/api/identidade/auth/*` | Hash de senha, query EF |
-| `UsuarioRepository` | Busca por email, persiste último acesso | Comparar senha em plain text |
+| `LoginUsersService` | Valida credenciais, emite token, registra auditoria LOGIN | Validar licença de módulo |
+| `AuthController` | Expõe endpoints `/api/auth/*` | Hash de senha, query EF |
+| `UsersRepository` | Busca por email, persiste usuário | Comparar senha em plain text |
 | `Usuario` (Domain) | Mantém `SenhaHash`, `Ativo`, `TipoUsuario` | Gerar JWT |
 
-## Endpoints sugeridos
+## Endpoints (RF001)
 
 ```
-POST   /api/identidade/auth/login
-POST   /api/identidade/auth/logout
-POST   /api/identidade/auth/refresh
-GET    /api/identidade/auth/me
+POST   /api/auth/registrar
+POST   /api/auth/login
+GET    /api/auth/me
 ```
 
 ## Fluxo Login
 
 ```
 AuthController
-  → LoginUsuarioService.ExecutarAsync
-    → IUsuarioRepository.ObterPorEmailAsync
-    → IGeradorSenhaHash.Verificar
-    → ITokenService.Gerar
-    → ILogAuditoriaService.Registrar (contexto Auditoria via abstração)
-  → Result<LoginResponse>
+  → LoginUsersService.ExecuteAsync
+    → IUsersRepository.ListByEmailLoginAsync
+    → IPasswordHashGenerator.Verify
+    → ITokenService.GenerateToken
+    → IAuditLogsService.RegisterLoginAsync
+  → Result<AuthResponse>
 ```
-
-## Integração com Modulos e Auditoria
-
-- Após login bem-sucedido, controller ou service de Identidade pode chamar `IObterPermissoesUsuarioService` (contexto Modulos) via interface.
-- Identidade **não importa** classes concretas de Modulos; apenas a interface em `Application/Modulos/Abstractions/`.
-- Registro de LOGIN usa `IAuditoriaService` (contexto Auditoria), nunca grava `LogAuditoria` direto no controller.
 
 ## Segurança
 
 - `SenhaHash` nunca retorna em DTO de response.
-- Tokens Google (`access_token`, `refresh_token`) ficam em `ContaGoogleConectada`, contexto `GoogleAgenda`, não em Identidade.
-- Login Google OAuth é feature de Identidade; sincronização de agenda é feature de GoogleAgenda.
-- Comparar credenciais com mensagem genérica ("Credenciais inválidas") para não revelar existência de email.
+- Comparar credenciais com mensagem genérica ("Credenciais inválidas").
+- JWT expiração: 8h (`ExpirationMinutes: 480`).
 
 ## Registro DI (exemplo)
 
 ```csharp
-services.AddScoped<ILoginUsuarioService, LoginUsuarioService>();
-services.AddScoped<ILogoutUsuarioService, LogoutUsuarioService>();
-services.AddScoped<IUsuarioRepository, UsuarioRepository>();
-services.AddScoped<ITokenService, JwtTokenService>();
-services.AddScoped<IGeradorSenhaHash, BcryptSenhaHashService>();
+services.AddScoped<ILoginUsersService, LoginUsersService>();
+services.AddScoped<IRegisterCompaniesService, RegisterCompaniesService>();
+services.AddScoped<IUsersRepository, UsersRepository>();
+services.AddScoped<ITokenService, JwtTokensService>();
+services.AddScoped<IPasswordHashGenerator, BcryptPasswordHashGenerator>();
 ```

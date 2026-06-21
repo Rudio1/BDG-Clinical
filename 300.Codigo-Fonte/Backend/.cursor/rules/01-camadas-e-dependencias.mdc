@@ -42,9 +42,10 @@ Domain
 
 ### Application
 
-- Um diretório por contexto: `Application/{Contexto}/`
-- Services ou handlers por caso de uso
-- DTOs de entrada e saída (Request/Response)
+- Um diretório por contexto em **inglês**: `Application/{Context}/` (ex.: `Identity`, `Inventory`)
+- Subpastas de feature/caso de uso em **inglês plural**: `Authentications/`, `Registrations/`, `Users/`
+- Services por caso de uso dentro da feature
+- DTOs em `Dtos/` (não `DTOs/` misturado com verbos PT)
 - Interfaces específicas em `Application/Abstractions/` ou `{Contexto}/Abstractions/`
 - `Result<T>` para retornos com erro de negócio previsível
 - Registro de serviços em `DependencyInjection.cs`
@@ -58,9 +59,12 @@ Domain
 
 ### WebApi
 
-- Controllers agrupados por contexto: `Controllers/{Contexto}/`
+- Controllers agrupados por **recurso**: `Controllers/{Recurso}/{Recurso}Controller.cs` (ex.: `Controllers/Auth/AuthController.cs`)
+- Extensions por recurso: `Extensions/{Recurso}/` (ex.: `Extensions/Auth/AuthServiceCollectionExtensions.cs`)
+- Infra host-specific por recurso: `Infrastructure/{Recurso}/` (ex.: `Infrastructure/Auth/JwtTokenService.cs`)
 - Middlewares transversais (exceções, tenant, autenticação)
 - Sem lógica de negócio; sem acesso direto a repositórios
+- Ver regra `08-organizacao-pastas-por-recurso.mdc` para árvore completa
 
 ## Composição (DI)
 

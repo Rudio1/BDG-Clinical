@@ -8,7 +8,7 @@ defineProps<{
 
 <template>
   <div class="empty-state">
-    <q-icon :name="icon" size="48px" color="grey-6" />
+    <q-icon :name="icon" size="48px" color="grey-5" />
     <h2>{{ titulo }}</h2>
     <p>{{ texto }}</p>
   </div>

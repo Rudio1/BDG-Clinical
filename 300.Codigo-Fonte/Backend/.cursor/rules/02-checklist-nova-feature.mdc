@@ -9,7 +9,7 @@ Antes de implementar, identificar o **contexto delimitado**. Se a feature cruza 
 
 ## 1. Planejamento
 
-- [ ] Contexto delimitado definido (ex.: `Estoque`, `Identidade`)
+- [ ] Contexto delimitado definido (ex.: `Inventory`, `Identity`)
 - [ ] Entidades e regras consultadas em `100.Documentos/banco-de-dados.mkd`
 - [ ] Módulo contratável verificado (`LicencaModulo`) se a feature pertence a módulo pago
 - [ ] Permissões necessárias mapeadas (`pode_visualizar`, `pode_criar`, `pode_editar`, `pode_excluir`)
@@ -24,7 +24,7 @@ Antes de implementar, identificar o **contexto delimitado**. Se a feature cruza 
 
 ## 3. Application
 
-- [ ] Pasta criada em `Application/{Contexto}/{Feature}/`
+- [ ] Pasta criada em `Application/{Contexto}/{Features}/` — contexto em inglês singular, features em inglês plural (ex.: `Identity/Authentications/`)
 - [ ] DTOs de request/response na pasta da feature
 - [ ] Interface do serviço em `{Contexto}/Abstractions/` ou `Application/Abstractions/`
 - [ ] Implementação do caso de uso retorna `Result<T>` quando falha é esperada
@@ -41,8 +41,9 @@ Antes de implementar, identificar o **contexto delimitado**. Se a feature cruza 
 
 ## 5. WebApi
 
-- [ ] Controller em `Controllers/{Contexto}/{Feature}Controller.cs`
-- [ ] Rota segue padrão: `api/{contexto-kebab}/{recurso}`
+- [ ] Controller em `Controllers/{Recurso}/{Recurso}Controller.cs` (ex.: `Auth/AuthController.cs`)
+- [ ] Extensions e infra host-specific em `Extensions/{Recurso}/` e `Infrastructure/{Recurso}/` quando aplicável
+- [ ] Rota segue padrão: `api/{contexto-kebab}/{recurso}` ou contrato acordado com o frontend (ex.: `api/auth/*`)
 - [ ] Autorização e validação de módulo/permissão aplicadas
 - [ ] Respostas de erro consistentes com `ExceptionHandlingMiddleware`
 - [ ] Endpoint documentado via OpenAPI quando aplicável

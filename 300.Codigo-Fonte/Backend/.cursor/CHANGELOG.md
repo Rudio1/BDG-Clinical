@@ -8,6 +8,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Regra `08-organizacao-pastas-por-recurso.mdc`: subpastas por recurso na WebApi (`Controllers/Auth/`, `Extensions/Auth/`, etc.).
+
+### Changed
+
+- Pastas e namespaces do RF001: `Identidade` → `Identity`; features `Login/Obter/Registrar` → `Authentications/Users/Registrations`.
+- Convenção documentada: **pastas em inglês, features no plural**; arquivos em inglês alinhados à classe (`UsersRepository`, `LoginUsersService`).
+- WebApi reorganizada: `Controllers/Auth/`, `Extensions/Auth/`, `Infrastructure/Auth/`, `Models/Common/ApiResponses.cs`.
+
 ---
 
 ## [1.1.0] - 2026-06-21

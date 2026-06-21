@@ -1,6 +1,9 @@
 using BGD.CLINICAL.Application.Abstractions.Persistence;
+using BGD.CLINICAL.Application.Identity.Abstractions;
 using BGD.CLINICAL.Infra.Data.Context;
 using BGD.CLINICAL.Infra.Data.Repositories;
+using BGD.CLINICAL.Infra.Data.Repositories.Identity;
+using BGD.CLINICAL.Infra.Data.Services.Audits;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +23,8 @@ public static class DependencyInjection
 
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<AppDbContext>());
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+        services.AddScoped<IUsersRepository, UsersRepository>();
+        services.AddScoped<IAuditLogsService, AuditLogsService>();
 
         return services;
     }
