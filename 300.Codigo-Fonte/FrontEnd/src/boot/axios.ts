@@ -1,9 +1,9 @@
 import axios, { AxiosError } from 'axios';
 
-import type { ApiError } from '@/types/api/api';
+import type { ApiError, ApiResponse } from '@/types/api/api';
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://localhost:7001',
+  baseURL: import.meta.env.VITE_API_URL || 'https://localhost:7013',
   timeout: 30000,
 });
 
@@ -17,12 +17,25 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+function extractErrorMessage(error: AxiosError<ApiError | ApiResponse<unknown>>): string {
+  const payload = error.response?.data;
+
+  if (payload && typeof payload === 'object') {
+    if ('message' in payload && payload.message) {
+      return payload.message;
+    }
+
+    if ('detail' in payload && payload.detail) {
+      return payload.detail;
+    }
+  }
+
+  return error.message || 'Erro ao processar a requisição.';
+}
+
 api.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<ApiError>) => {
-    const detail = error.response?.data?.detail || error.response?.data?.message;
-    const message = detail || error.message || 'Erro ao processar a requisição.';
-
-    return Promise.reject(new Error(message));
+  (error: AxiosError<ApiError | ApiResponse<unknown>>) => {
+    return Promise.reject(new Error(extractErrorMessage(error)));
   },
 );

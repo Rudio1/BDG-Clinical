@@ -2,12 +2,16 @@ using BGD.CLINICAL.Application;
 using BGD.CLINICAL.Infra.Data;
 using BGD.CLINICAL.Infra.ExternalApis;
 using BGD.CLINICAL.WebApi.Extensions;
+using BGD.CLINICAL.WebApi.Extensions.Auth;
+using BGD.CLINICAL.WebApi.Extensions.Common;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfraData(builder.Configuration);
 builder.Services.AddExternalApis();
+builder.Services.AddAuth(builder.Configuration);
+builder.Services.AddDevelopmentCors();
 
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();
@@ -26,7 +30,14 @@ app.UseSwaggerUI(options =>
 });
 
 app.UseHttpsRedirection();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors(DevelopmentCorsExtensions.PolicyName);
+}
+
 app.UseApiExceptionHandling();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

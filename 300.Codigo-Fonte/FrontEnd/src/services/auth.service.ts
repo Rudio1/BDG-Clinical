@@ -7,6 +7,14 @@ export interface LoginRequest {
   senha: string;
 }
 
+export interface RegistrarRequest {
+  nomeEmpresa: string;
+  nome: string;
+  email: string;
+  senha: string;
+  cnpj?: string;
+}
+
 export interface LoginResponse {
   token: string;
   usuario: UsuarioAutenticado;
@@ -15,6 +23,11 @@ export interface LoginResponse {
 export const authService = {
   async login(payload: LoginRequest): Promise<LoginResponse> {
     const { data } = await api.post<ApiResponse<LoginResponse>>('/api/auth/login', payload);
+
+    return data.data;
+  },
+  async registrar(payload: RegistrarRequest): Promise<LoginResponse> {
+    const { data } = await api.post<ApiResponse<LoginResponse>>('/api/auth/registrar', payload);
 
     return data.data;
   },

@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router';
 import { useAuth } from '@/composables/useAuth';
 import { useNotificacao } from '@/composables/useNotificacao';
 import { useTratarErroFormulario } from '@/composables/useTratarErroFormulario';
+import { DesignSystemAuth } from '@/constants/design-system';
 
 const router = useRouter();
 const auth = useAuth();
@@ -35,62 +36,57 @@ async function entrar(): Promise<void> {
 </script>
 
 <template>
-  <q-page class="auth-page">
-    <section class="auth-panel">
-      <div class="brand">
-        <q-icon name="health_and_safety" size="40px" color="primary" />
-        <div>
-          <h1>BGD Clinical</h1>
-          <p>Ambiente administrativo</p>
-        </div>
-      </div>
+  <app-auth-shell
+    variant="login"
+    :form-title="DesignSystemAuth.login.formTitle"
+    :form-subtitle="DesignSystemAuth.login.formSubtitle"
+  >
+    <q-form class="auth-premium__form-stack" @submit.prevent="entrar">
+      <q-input
+        v-model="form.email"
+        label="E-mail"
+        type="email"
+        outlined
+        autocomplete="email"
+        class="ds-animate-fade-in-up ds-stagger-1"
+        :rules="[(value: string) => Boolean(value) || 'Informe o e-mail']"
+      />
 
-      <q-form class="login-form" @submit.prevent="entrar">
-        <q-input
-          v-model="form.email"
-          label="E-mail"
-          type="email"
-          outlined
-          autocomplete="email"
-          :rules="[(value: string) => Boolean(value) || 'Informe o e-mail']"
-        >
-          <template #prepend>
-            <q-icon name="mail" />
-          </template>
-        </q-input>
+      <q-input
+        v-model="form.senha"
+        label="Senha"
+        :type="mostrarSenha ? 'text' : 'password'"
+        outlined
+        autocomplete="current-password"
+        class="ds-animate-fade-in-up ds-stagger-2"
+        :rules="[(value: string) => Boolean(value) || 'Informe a senha']"
+      >
+        <template #append>
+          <q-btn
+            flat
+            round
+            dense
+            :icon="mostrarSenha ? 'visibility_off' : 'visibility'"
+            :aria-label="mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'"
+            @click="mostrarSenha = !mostrarSenha"
+          />
+        </template>
+      </q-input>
 
-        <q-input
-          v-model="form.senha"
-          label="Senha"
-          :type="mostrarSenha ? 'text' : 'password'"
-          outlined
-          autocomplete="current-password"
-          :rules="[(value: string) => Boolean(value) || 'Informe a senha']"
-        >
-          <template #prepend>
-            <q-icon name="lock" />
-          </template>
-          <template #append>
-            <q-btn
-              flat
-              round
-              dense
-              :icon="mostrarSenha ? 'visibility_off' : 'visibility'"
-              @click="mostrarSenha = !mostrarSenha"
-            />
-          </template>
-        </q-input>
+      <q-btn
+        color="primary"
+        label="Continuar"
+        type="submit"
+        unelevated
+        no-caps
+        class="full-width auth-premium__submit ds-animate-fade-in-up ds-stagger-3"
+        :loading="carregando"
+      />
+    </q-form>
 
-        <q-btn
-          color="primary"
-          label="Entrar"
-          type="submit"
-          unelevated
-          no-caps
-          class="full-width"
-          :loading="carregando"
-        />
-      </q-form>
-    </section>
-  </q-page>
+    <p class="auth-premium__footer-link ds-animate-fade-in-up ds-stagger-4">
+      Ainda não tem conta?
+      <router-link :to="{ name: 'cadastro' }">Cadastre-se grátis</router-link>
+    </p>
+  </app-auth-shell>
 </template>

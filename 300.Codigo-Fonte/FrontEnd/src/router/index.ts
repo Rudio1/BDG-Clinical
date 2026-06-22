@@ -14,6 +14,10 @@ router.beforeEach((to) => {
   const permissao = to.meta.permissao;
 
   if (to.meta.publica) {
+    if (authStore.isAutenticado && (to.name === 'login' || to.name === 'cadastro')) {
+      return { name: 'dashboard' };
+    }
+
     return true;
   }
 

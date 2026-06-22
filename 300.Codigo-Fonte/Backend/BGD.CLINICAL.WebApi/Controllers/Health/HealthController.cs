@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace BGD.CLINICAL.WebApi.Controllers;
+namespace BGD.CLINICAL.WebApi.Controllers.Health;
 
 [ApiController]
 [Route("api/[controller]")]

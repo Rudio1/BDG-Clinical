@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 
-import { authService, type LoginRequest } from '@/services/auth.service';
+import { authService, type LoginRequest, type RegistrarRequest } from '@/services/auth.service';
 import type { UsuarioAutenticado } from '@/types/entidades/usuario';
 
 interface AuthState {
@@ -28,12 +28,17 @@ export const useAuthStore = defineStore('auth', {
 
       try {
         const response = await authService.login(payload);
+        this.persistirSessao(response.token, response.usuario);
+      } finally {
+        this.carregando = false;
+      }
+    },
+    async registrar(payload: RegistrarRequest): Promise<void> {
+      this.carregando = true;
 
-        this.token = response.token;
-        this.usuario = response.usuario;
-
-        localStorage.setItem('auth.token', response.token);
-        localStorage.setItem('auth.usuario', JSON.stringify(response.usuario));
+      try {
+        const response = await authService.registrar(payload);
+        this.persistirSessao(response.token, response.usuario);
       } finally {
         this.carregando = false;
       }
@@ -47,6 +52,13 @@ export const useAuthStore = defineStore('auth', {
     },
     possuiPermissao(permissao: string): boolean {
       return this.permissoes.includes(permissao);
+    },
+    persistirSessao(token: string, usuario: UsuarioAutenticado): void {
+      this.token = token;
+      this.usuario = usuario;
+
+      localStorage.setItem('auth.token', token);
+      localStorage.setItem('auth.usuario', JSON.stringify(usuario));
     },
   },
 });
