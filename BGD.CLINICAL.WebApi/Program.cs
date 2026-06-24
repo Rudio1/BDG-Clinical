@@ -9,7 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfraData(builder.Configuration);
-builder.Services.AddExternalApis();
+builder.Services.AddExternalApis(builder.Configuration);
 builder.Services.AddAuth(builder.Configuration);
 builder.Services.AddTenantContext();
 builder.Services.AddDevelopmentCors();

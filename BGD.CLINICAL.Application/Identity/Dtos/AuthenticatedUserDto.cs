@@ -4,4 +4,4 @@ public sealed record AuthenticatedUserDto(
     Guid Id,
     string Nome,
     string Email,
-    IReadOnlyList<string> Permissoes);
+    bool IsAdmin);

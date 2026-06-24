@@ -1,0 +1,53 @@
+using BGD.CLINICAL.Application.Abstractions.Identity;
+using BGD.CLINICAL.Application.Abstractions.Security;
+using BGD.CLINICAL.Application.Common;
+using BGD.CLINICAL.Application.Core.Abstractions;
+using BGD.CLINICAL.Application.Core.Dtos;
+
+namespace BGD.CLINICAL.Application.Core.Employees;
+
+public interface IListEmployeesService
+{
+    Task<Result<IReadOnlyList<EmployeeDto>>> ExecuteAsync(
+        bool includeInactive = false,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed class ListEmployeesService : IListEmployeesService
+{
+    private readonly ICurrentTenantContext _tenantContext;
+    private readonly IEmployeesRepository _employeesRepository;
+
+    public ListEmployeesService(
+        ICurrentTenantContext tenantContext,
+        IEmployeesRepository employeesRepository)
+    {
+        _tenantContext = tenantContext;
+        _employeesRepository = employeesRepository;
+    }
+
+    public async Task<Result<IReadOnlyList<EmployeeDto>>> ExecuteAsync(
+        bool includeInactive = false,
+        CancellationToken cancellationToken = default)
+    {
+        var empresaId = _tenantContext.EmpresaId;
+        var funcionarios = await _employeesRepository.ListByEmpresaIdAsync(
+            empresaId,
+            includeInactive,
+            cancellationToken);
+
+        var userAccessInfoByFuncionarioId = new Dictionary<Guid, EmployeeUserAccessInfo?>();
+
+        foreach (var funcionario in funcionarios)
+        {
+            userAccessInfoByFuncionarioId[funcionario.Id] =
+                await _employeesRepository.GetUserAccessInfoByFuncionarioAndEmpresaAsync(
+                    funcionario.Id,
+                    empresaId,
+                    cancellationToken);
+        }
+
+        return Result<IReadOnlyList<EmployeeDto>>.Success(
+            EmployeesMapper.Map(funcionarios, empresaId, userAccessInfoByFuncionarioId));
+    }
+}

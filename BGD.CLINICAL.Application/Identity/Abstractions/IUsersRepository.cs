@@ -12,5 +12,17 @@ public interface IUsersRepository
 
     Task<bool> ExistsActiveByEmailAsync(string emailLogin, CancellationToken cancellationToken = default);
 
+    Task<bool> ExistsActiveEmailLoginByEmpresaAsync(
+        Guid empresaId,
+        string emailLogin,
+        CancellationToken cancellationToken = default);
+
+    Task<Usuario?> GetByFuncionarioIdAndEmpresaIdAsync(
+        Guid funcionarioId,
+        Guid empresaId,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(Usuario usuario, CancellationToken cancellationToken = default);
+
+    void Update(Usuario usuario);
 }

@@ -31,7 +31,7 @@ Relacionamentos:
 ```text
 Empresa 1:N Unidade
 Empresa 1:N Usuario
-Empresa 1:N Funcionario
+Empresa 1:N FuncionarioVinculo
 Empresa 1:N Cargo
 Empresa 1:N Paciente
 Empresa 1:N Produto
@@ -65,7 +65,7 @@ Relacionamentos:
 
 ```text
 Unidade N:1 Empresa
-Unidade 1:N Funcionario
+Unidade 1:N FuncionarioVinculo
 Unidade 1:N Paciente
 Unidade 1:N CompraPaciente
 Unidade 1:N PedidoFornecedor
@@ -96,24 +96,51 @@ Relacionamentos:
 
 ```text
 Cargo N:1 Empresa
-Cargo 1:N Funcionario
+Cargo 1:N FuncionarioVinculo
 ```
 
 ---
 
 ### Funcionario
 
-Representa um colaborador da clínica.
+Representa um colaborador da clínica (dados pessoais).
 
 ```text
 funcionario
 - id
-- empresa_id
-- unidade_id
-- cargo_id
 - nome
 - telefone
 - email
+- ativo
+- criado_em
+- atualizado_em
+```
+
+Relacionamentos:
+
+```text
+Funcionario 1:N FuncionarioVinculo
+Funcionario 0..1:1 Usuario
+Funcionario 1:N AplicacaoPaciente
+Funcionario 1:N Agendamento
+Funcionario 1:N DisponibilidadeFuncionario
+Funcionario 1:N BloqueioAgenda
+Funcionario 1:N ContaGoogleConectada
+```
+
+---
+
+### FuncionarioVinculo
+
+Define onde o funcionário atua: em uma empresa inteira ou em unidades específicas.
+
+```text
+funcionario_vinculo
+- id
+- funcionario_id
+- empresa_id
+- unidade_id
+- cargo_id
 - flag_aplicador
 - ativo
 - criado_em
@@ -123,20 +150,20 @@ funcionario
 Relacionamentos:
 
 ```text
-Funcionario N:1 Empresa
-Funcionario N:1 Unidade
-Funcionario N:1 Cargo
-Funcionario 1:N AplicacaoPaciente
-Funcionario 1:N Agendamento
-Funcionario 1:N DisponibilidadeFuncionario
-Funcionario 1:N BloqueioAgenda
-Funcionario 1:N ContaGoogleConectada
+FuncionarioVinculo N:1 Funcionario
+FuncionarioVinculo N:0..1 Empresa
+FuncionarioVinculo N:0..1 Unidade
+FuncionarioVinculo N:0..1 Cargo
 ```
 
 Regras:
 
 ```text
-flag_aplicador indica se o funcionário pode realizar aplicações.
+Cada vínculo deve ter exatamente empresa_id OU unidade_id preenchido.
+Vínculo por empresa = atua em todas as unidades daquela empresa.
+Vínculo por unidade = atua somente na unidade informada.
+Funcionário precisa de ao menos um vínculo ativo.
+flag_aplicador indica se o funcionário pode realizar aplicações naquele vínculo.
 Somente funcionários aplicadores devem ser selecionados para AplicacaoPaciente realizada.
 ```
 
@@ -154,6 +181,7 @@ usuario
 - nome
 - email_login
 - senha_hash
+- pendente_primeiro_acesso
 - auth_provider
 - google_id
 - tipo_usuario
@@ -165,8 +193,8 @@ usuario
 Enum `tipo_usuario`:
 
 ```text
-ADMIN
-USUARIO
+Admin
+Funcionario
 ```
 
 Relacionamentos:
@@ -177,6 +205,48 @@ Usuario 0..1:1 Funcionario
 Usuario 1:N PermissaoUsuario
 Usuario 1:N ContaGoogleConectada
 Usuario 1:N LogAuditoria
+```
+
+Regras:
+
+```text
+pendente_primeiro_acesso indica que o usuário ainda não definiu a senha.
+Funcionários cadastrados pela clínica entram com pendente_primeiro_acesso = true e senha_hash nulo.
+tipo_usuario = Funcionario para colaboradores comuns; Admin quando isAdmin = true no cadastro/edição.
+Enquanto pendente_primeiro_acesso = true, o login convencional é bloqueado.
+Após o primeiro acesso, pendente_primeiro_acesso = false e senha_hash passa a ser obrigatório.
+```
+
+---
+
+### ConvitePrimeiroAcesso
+
+Token de uso único para o fluxo de primeiro acesso por e-mail.
+
+```text
+convite_primeiro_acesso
+- id
+- usuario_id
+- token_hash
+- expira_em
+- utilizado_em
+- criado_em
+- atualizado_em
+```
+
+Relacionamentos:
+
+```text
+ConvitePrimeiroAcesso N:1 Usuario
+```
+
+Regras:
+
+```text
+Ao cadastrar funcionário com acesso, o sistema invalida convites pendentes do usuário e cria um novo.
+O token em texto puro vai na URL do e-mail; apenas o hash SHA-256 fica no banco.
+Convite expira após TokenExpirationHours (config, padrão 168h = 7 dias).
+utilizado_em preenchido após conclusão do primeiro acesso; convite não pode ser reutilizado.
 ```
 
 ---

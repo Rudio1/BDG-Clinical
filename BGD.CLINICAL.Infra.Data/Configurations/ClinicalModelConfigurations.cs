@@ -1,4 +1,5 @@
 using BGD.CLINICAL.Domain.Entities;
+using BGD.CLINICAL.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -44,10 +45,14 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         builder.HasKey(entity => entity.Id);
         builder.Property(entity => entity.Nome).HasMaxLength(160).IsRequired();
         builder.Property(entity => entity.EmailLogin).HasMaxLength(200).IsRequired();
-        builder.Property(entity => entity.SenhaHash).HasMaxLength(500).IsRequired();
+        builder.Property(entity => entity.SenhaHash).HasMaxLength(500);
+        builder.Property(entity => entity.PendentePrimeiroAcesso).HasDefaultValue(false);
         builder.Property(entity => entity.AuthProvider).HasMaxLength(60).IsRequired();
         builder.Property(entity => entity.GoogleId).HasMaxLength(200);
-        builder.Property(entity => entity.TipoUsuario).HasConversion<string>().HasMaxLength(40).IsRequired();
+        builder.Property(entity => entity.TipoUsuario)
+            .HasConversion(new TipoUsuarioValueConverter())
+            .HasMaxLength(40)
+            .IsRequired();
         builder.HasOne(entity => entity.Empresa)
             .WithMany(entity => entity.Usuarios)
             .HasForeignKey(entity => entity.EmpresaId)
@@ -60,6 +65,22 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
     }
 }
 
+internal sealed class ConvitePrimeiroAcessoConfiguration : IEntityTypeConfiguration<ConvitePrimeiroAcesso>
+{
+    public void Configure(EntityTypeBuilder<ConvitePrimeiroAcesso> builder)
+    {
+        builder.ToTable("convite_primeiro_acesso");
+        builder.HasKey(entity => entity.Id);
+        builder.Property(entity => entity.TokenHash).HasMaxLength(128).IsRequired();
+        builder.HasOne(entity => entity.Usuario)
+            .WithMany()
+            .HasForeignKey(entity => entity.UsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(entity => entity.TokenHash).IsUnique();
+        builder.HasIndex(entity => new { entity.UsuarioId, entity.UtilizadoEm });
+    }
+}
+
 internal sealed class FuncionarioConfiguration : IEntityTypeConfiguration<Funcionario>
 {
     public void Configure(EntityTypeBuilder<Funcionario> builder)
@@ -69,8 +90,21 @@ internal sealed class FuncionarioConfiguration : IEntityTypeConfiguration<Funcio
         builder.Property(entity => entity.Nome).HasMaxLength(160).IsRequired();
         builder.Property(entity => entity.Telefone).HasMaxLength(30);
         builder.Property(entity => entity.Email).HasMaxLength(200);
+        builder.HasMany(entity => entity.Vinculos)
+            .WithOne(entity => entity.Funcionario)
+            .HasForeignKey(entity => entity.FuncionarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class FuncionarioVinculoConfiguration : IEntityTypeConfiguration<FuncionarioVinculo>
+{
+    public void Configure(EntityTypeBuilder<FuncionarioVinculo> builder)
+    {
+        builder.ToTable("funcionario_vinculo");
+        builder.HasKey(entity => entity.Id);
         builder.HasOne(entity => entity.Empresa)
-            .WithMany(entity => entity.Funcionarios)
+            .WithMany(entity => entity.FuncionarioVinculos)
             .HasForeignKey(entity => entity.EmpresaId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(entity => entity.Unidade)
@@ -78,10 +112,18 @@ internal sealed class FuncionarioConfiguration : IEntityTypeConfiguration<Funcio
             .HasForeignKey(entity => entity.UnidadeId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(entity => entity.Cargo)
-            .WithMany(entity => entity.Funcionarios)
+            .WithMany(entity => entity.FuncionarioVinculos)
             .HasForeignKey(entity => entity.CargoId)
             .OnDelete(DeleteBehavior.Restrict);
-        builder.HasIndex(entity => new { entity.EmpresaId, entity.Nome });
+        builder.HasIndex(entity => new { entity.FuncionarioId, entity.EmpresaId })
+            .IsUnique()
+            .HasFilter("[empresa_id] IS NOT NULL");
+        builder.HasIndex(entity => new { entity.FuncionarioId, entity.UnidadeId })
+            .IsUnique()
+            .HasFilter("[unidade_id] IS NOT NULL");
+        builder.ToTable(table => table.HasCheckConstraint(
+            "ck_funcionario_vinculo_empresa_xor_unidade",
+            "([empresa_id] IS NOT NULL AND [unidade_id] IS NULL) OR ([empresa_id] IS NULL AND [unidade_id] IS NOT NULL)"));
     }
 }
 
