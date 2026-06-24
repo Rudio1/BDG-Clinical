@@ -4,6 +4,7 @@ using BGD.CLINICAL.Infra.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BGD.CLINICAL.Infra.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260624040758_AddUsuarioPendentePrimeiroAcesso")]
+    partial class AddUsuarioPendentePrimeiroAcesso
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -697,52 +700,6 @@ namespace BGD.CLINICAL.Infra.Data.Migrations
                         .HasDatabaseName("ix_conta_receber_empresa_id_paciente_id_status");
 
                     b.ToTable("conta_receber", (string)null);
-                });
-
-            modelBuilder.Entity("BGD.CLINICAL.Domain.Entities.ConvitePrimeiroAcesso", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime?>("AtualizadoEm")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("atualizado_em");
-
-                    b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("criado_em");
-
-                    b.Property<DateTime>("ExpiraEm")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("expira_em");
-
-                    b.Property<string>("TokenHash")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)")
-                        .HasColumnName("token_hash");
-
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("usuario_id");
-
-                    b.Property<DateTime?>("UtilizadoEm")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("utilizado_em");
-
-                    b.HasKey("Id")
-                        .HasName("pk_convite_primeiro_acesso");
-
-                    b.HasIndex("TokenHash")
-                        .IsUnique()
-                        .HasDatabaseName("ix_convite_primeiro_acesso_token_hash");
-
-                    b.HasIndex("UsuarioId", "UtilizadoEm")
-                        .HasDatabaseName("ix_convite_primeiro_acesso_usuario_id_utilizado_em");
-
-                    b.ToTable("convite_primeiro_acesso", (string)null);
                 });
 
             modelBuilder.Entity("BGD.CLINICAL.Domain.Entities.DisponibilidadeFuncionario", b =>
@@ -2296,18 +2253,6 @@ namespace BGD.CLINICAL.Infra.Data.Migrations
                     b.Navigation("Empresa");
 
                     b.Navigation("Paciente");
-                });
-
-            modelBuilder.Entity("BGD.CLINICAL.Domain.Entities.ConvitePrimeiroAcesso", b =>
-                {
-                    b.HasOne("BGD.CLINICAL.Domain.Entities.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_convite_primeiro_acesso_usuario_usuario_id");
-
-                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("BGD.CLINICAL.Domain.Entities.DisponibilidadeFuncionario", b =>

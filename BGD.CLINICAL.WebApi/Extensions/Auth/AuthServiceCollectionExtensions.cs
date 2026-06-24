@@ -1,6 +1,9 @@
+using BGD.CLINICAL.Application.Identity;
 using BGD.CLINICAL.Application.Identity.Abstractions;
+using BGD.CLINICAL.Domain.Enums;
 using BGD.CLINICAL.WebApi.Infrastructure.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -41,6 +44,14 @@ public static class AuthServiceCollectionExtensions
                     ClockSkew = TimeSpan.Zero,
                 };
             });
+
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy(IdentityConstants.PolicyAdmin, policy =>
+                policy.RequireClaim(
+                    IdentityConstants.ClaimTipoUsuario,
+                    nameof(TipoUsuario.Admin)));
+        });
 
         return services;
     }

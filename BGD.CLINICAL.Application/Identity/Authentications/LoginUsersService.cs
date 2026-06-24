@@ -56,7 +56,13 @@ public sealed class LoginUsersService : ILoginUsersService
 
         var usuario = candidatos[0];
 
-        if (!_passwordHashGenerator.Verify(request.Senha, usuario.SenhaHash))
+        if (usuario.PendentePrimeiroAcesso)
+        {
+            return Result<AuthResponse>.Failure(IdentityValidation.PrimeiroAcessoPendente);
+        }
+
+        if (string.IsNullOrWhiteSpace(usuario.SenhaHash)
+            || !_passwordHashGenerator.Verify(request.Senha, usuario.SenhaHash))
         {
             return Result<AuthResponse>.Failure(IdentityValidation.CredenciaisInvalidas);
         }

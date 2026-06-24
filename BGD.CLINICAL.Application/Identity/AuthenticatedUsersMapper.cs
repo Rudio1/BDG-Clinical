@@ -13,17 +13,7 @@ internal static class AuthenticatedUsersMapper
             usuario.Id,
             usuario.Nome,
             usuario.EmailLogin,
-            GetPermissions(usuario));
-    }
-
-    private static IReadOnlyList<string> GetPermissions(Usuario usuario)
-    {
-        if (usuario.TipoUsuario == TipoUsuario.Admin)
-        {
-            return [IdentityConstants.PermissaoDashboardVisualizar];
-        }
-
-        return [];
+            usuario.TipoUsuario == TipoUsuario.Admin);
     }
 }
 
@@ -32,6 +22,8 @@ internal static class IdentityValidation
     public const string CredenciaisInvalidas = IdentityConstants.CredenciaisInvalidas;
 
     public const string MultiplasContas = IdentityConstants.MultiplasContas;
+
+    public const string PrimeiroAcessoPendente = IdentityConstants.PrimeiroAcessoPendente;
 
     public static bool IsValidEmail(string email)
     {

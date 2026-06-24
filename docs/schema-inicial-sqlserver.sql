@@ -164,20 +164,35 @@ GO
 
 CREATE TABLE funcionario (
     id              UNIQUEIDENTIFIER NOT NULL,
-    empresa_id      UNIQUEIDENTIFIER NOT NULL,
-    unidade_id      UNIQUEIDENTIFIER NOT NULL,
     nome            NVARCHAR(160)    NOT NULL,
     telefone        NVARCHAR(30)     NULL,
     email           NVARCHAR(200)    NULL,
+    ativo           BIT              NOT NULL,
+    criado_em       DATETIME2        NOT NULL,
+    atualizado_em   DATETIME2        NULL,
+    CONSTRAINT pk_funcionario PRIMARY KEY (id)
+);
+GO
+
+CREATE TABLE funcionario_vinculo (
+    id              UNIQUEIDENTIFIER NOT NULL,
+    funcionario_id  UNIQUEIDENTIFIER NOT NULL,
+    empresa_id      UNIQUEIDENTIFIER NULL,
+    unidade_id      UNIQUEIDENTIFIER NULL,
     cargo_id        UNIQUEIDENTIFIER NULL,
     flag_aplicador  BIT              NOT NULL,
     ativo           BIT              NOT NULL,
     criado_em       DATETIME2        NOT NULL,
     atualizado_em   DATETIME2        NULL,
-    CONSTRAINT pk_funcionario PRIMARY KEY (id),
-    CONSTRAINT fk_funcionario_cargo_cargo_id FOREIGN KEY (cargo_id) REFERENCES cargo (id),
-    CONSTRAINT fk_funcionario_empresa_empresa_id FOREIGN KEY (empresa_id) REFERENCES empresa (id),
-    CONSTRAINT fk_funcionario_unidade_unidade_id FOREIGN KEY (unidade_id) REFERENCES unidade (id)
+    CONSTRAINT pk_funcionario_vinculo PRIMARY KEY (id),
+    CONSTRAINT fk_funcionario_vinculo_funcionario_funcionario_id FOREIGN KEY (funcionario_id) REFERENCES funcionario (id),
+    CONSTRAINT fk_funcionario_vinculo_empresa_empresa_id FOREIGN KEY (empresa_id) REFERENCES empresa (id),
+    CONSTRAINT fk_funcionario_vinculo_unidade_unidade_id FOREIGN KEY (unidade_id) REFERENCES unidade (id),
+    CONSTRAINT fk_funcionario_vinculo_cargo_cargo_id FOREIGN KEY (cargo_id) REFERENCES cargo (id),
+    CONSTRAINT ck_funcionario_vinculo_empresa_xor_unidade CHECK (
+        (empresa_id IS NOT NULL AND unidade_id IS NULL)
+        OR (empresa_id IS NULL AND unidade_id IS NOT NULL)
+    )
 );
 GO
 
@@ -242,9 +257,10 @@ CREATE TABLE usuario (
     empresa_id      UNIQUEIDENTIFIER NOT NULL,
     funcionario_id  UNIQUEIDENTIFIER NULL,
     nome            NVARCHAR(160)    NOT NULL,
-    email_login     NVARCHAR(200)    NOT NULL,
-    senha_hash      NVARCHAR(500)    NOT NULL,
-    auth_provider   NVARCHAR(60)     NOT NULL,
+    email_login             NVARCHAR(200)    NOT NULL,
+    senha_hash              NVARCHAR(500)    NULL,
+    pendente_primeiro_acesso BIT             NOT NULL CONSTRAINT df_usuario_pendente_primeiro_acesso DEFAULT 0,
+    auth_provider           NVARCHAR(60)     NOT NULL,
     google_id       NVARCHAR(200)    NULL,
     tipo_usuario    NVARCHAR(40)     NOT NULL,
     ativo           BIT              NOT NULL,
@@ -254,6 +270,25 @@ CREATE TABLE usuario (
     CONSTRAINT fk_usuario_empresa_empresa_id FOREIGN KEY (empresa_id) REFERENCES empresa (id),
     CONSTRAINT fk_usuario_funcionario_funcionario_id FOREIGN KEY (funcionario_id) REFERENCES funcionario (id)
 );
+GO
+
+CREATE TABLE convite_primeiro_acesso (
+    id              UNIQUEIDENTIFIER NOT NULL,
+    usuario_id      UNIQUEIDENTIFIER NOT NULL,
+    token_hash      NVARCHAR(128)    NOT NULL,
+    expira_em       DATETIME2        NOT NULL,
+    utilizado_em    DATETIME2        NULL,
+    criado_em       DATETIME2        NOT NULL,
+    atualizado_em   DATETIME2        NULL,
+    CONSTRAINT pk_convite_primeiro_acesso PRIMARY KEY (id),
+    CONSTRAINT fk_convite_primeiro_acesso_usuario_usuario_id FOREIGN KEY (usuario_id) REFERENCES usuario (id)
+);
+GO
+
+CREATE UNIQUE INDEX ix_convite_primeiro_acesso_token_hash ON convite_primeiro_acesso (token_hash);
+GO
+
+CREATE INDEX ix_convite_primeiro_acesso_usuario_id_utilizado_em ON convite_primeiro_acesso (usuario_id, utilizado_em);
 GO
 
 CREATE TABLE compra_paciente (
@@ -589,9 +624,12 @@ CREATE UNIQUE INDEX ix_forma_pagamento_empresa_id_nome ON forma_pagamento (empre
 
 CREATE INDEX ix_fornecedor_empresa_id_cnpj ON fornecedor (empresa_id, cnpj);
 
-CREATE INDEX ix_funcionario_cargo_id ON funcionario (cargo_id);
-CREATE INDEX ix_funcionario_empresa_id_nome ON funcionario (empresa_id, nome);
-CREATE INDEX ix_funcionario_unidade_id ON funcionario (unidade_id);
+CREATE INDEX ix_funcionario_vinculo_cargo_id ON funcionario_vinculo (cargo_id);
+CREATE INDEX ix_funcionario_vinculo_empresa_id ON funcionario_vinculo (empresa_id);
+CREATE INDEX ix_funcionario_vinculo_funcionario_id ON funcionario_vinculo (funcionario_id);
+CREATE INDEX ix_funcionario_vinculo_funcionario_id_empresa_id ON funcionario_vinculo (funcionario_id, empresa_id) WHERE empresa_id IS NOT NULL;
+CREATE INDEX ix_funcionario_vinculo_funcionario_id_unidade_id ON funcionario_vinculo (funcionario_id, unidade_id) WHERE unidade_id IS NOT NULL;
+CREATE INDEX ix_funcionario_vinculo_unidade_id ON funcionario_vinculo (unidade_id);
 
 CREATE UNIQUE INDEX ix_item_pacote_pacote_id_produto_id ON item_pacote (pacote_id, produto_id);
 CREATE INDEX ix_item_pacote_produto_id ON item_pacote (produto_id);

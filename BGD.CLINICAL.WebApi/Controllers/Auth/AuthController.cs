@@ -1,6 +1,7 @@
 using BGD.CLINICAL.Application.Identity;
 using BGD.CLINICAL.Application.Identity.Abstractions;
 using BGD.CLINICAL.Application.Identity.Dtos;
+using BGD.CLINICAL.Application.Identity.FirstAccess;
 using BGD.CLINICAL.WebApi.Models.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,15 +15,21 @@ public sealed class AuthController : ControllerBase
     private readonly ILoginUsersService _loginUsersService;
     private readonly IRegisterCompaniesService _registerCompaniesService;
     private readonly IGetAuthenticatedUsersService _getAuthenticatedUsersService;
+    private readonly IValidateFirstAccessEmailsService _validateFirstAccessEmailsService;
+    private readonly ICompleteFirstAccessService _completeFirstAccessService;
 
     public AuthController(
         ILoginUsersService loginUsersService,
         IRegisterCompaniesService registerCompaniesService,
-        IGetAuthenticatedUsersService getAuthenticatedUsersService)
+        IGetAuthenticatedUsersService getAuthenticatedUsersService,
+        IValidateFirstAccessEmailsService validateFirstAccessEmailsService,
+        ICompleteFirstAccessService completeFirstAccessService)
     {
         _loginUsersService = loginUsersService;
         _registerCompaniesService = registerCompaniesService;
         _getAuthenticatedUsersService = getAuthenticatedUsersService;
+        _validateFirstAccessEmailsService = validateFirstAccessEmailsService;
+        _completeFirstAccessService = completeFirstAccessService;
     }
 
     [HttpPost("registrar")]
@@ -74,5 +81,38 @@ public sealed class AuthController : ControllerBase
         }
 
         return Ok(new ApiResponse<AuthenticatedUserDto>(result.Value!, true));
+    }
+
+    [HttpPost("primeiro-acesso/validar-email")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ValidateFirstAccessEmail(
+        [FromBody] ValidateFirstAccessEmailRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _validateFirstAccessEmailsService.ExecuteAsync(request, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return BadRequest(new ApiResponse<object?>(null!, false, result.Error));
+        }
+
+        return Ok(new ApiResponse<ValidateFirstAccessEmailResponse>(result.Value!, true));
+    }
+
+    [HttpPost("primeiro-acesso/concluir")]
+    [AllowAnonymous]
+    public async Task<IActionResult> CompleteFirstAccess(
+        [FromBody] CompleteFirstAccessRequest request,
+        CancellationToken cancellationToken)
+    {
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var result = await _completeFirstAccessService.ExecuteAsync(request, ip, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return BadRequest(new ApiResponse<object?>(null!, false, result.Error));
+        }
+
+        return Ok(new ApiResponse<AuthResponse>(result.Value!, true));
     }
 }

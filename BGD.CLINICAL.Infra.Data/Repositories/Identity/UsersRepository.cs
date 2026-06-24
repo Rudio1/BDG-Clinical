@@ -51,8 +51,37 @@ public sealed class UsersRepository : IUsersRepository
             cancellationToken);
     }
 
+    public Task<bool> ExistsActiveEmailLoginByEmpresaAsync(
+        Guid empresaId,
+        string emailLogin,
+        CancellationToken cancellationToken = default)
+    {
+        return _context.Usuarios.AnyAsync(
+            usuario =>
+                usuario.EmpresaId == empresaId
+                && usuario.EmailLogin == emailLogin
+                && usuario.Ativo
+                && usuario.AuthProvider == IdentityConstants.AuthProviderLocal,
+            cancellationToken);
+    }
+
+    public Task<Usuario?> GetByFuncionarioIdAndEmpresaIdAsync(
+        Guid funcionarioId,
+        Guid empresaId,
+        CancellationToken cancellationToken = default)
+    {
+        return _context.Usuarios.FirstOrDefaultAsync(
+            usuario => usuario.FuncionarioId == funcionarioId && usuario.EmpresaId == empresaId,
+            cancellationToken);
+    }
+
     public async Task AddAsync(Usuario usuario, CancellationToken cancellationToken = default)
     {
         await _context.Usuarios.AddAsync(usuario, cancellationToken);
+    }
+
+    public void Update(Usuario usuario)
+    {
+        _context.Usuarios.Update(usuario);
     }
 }

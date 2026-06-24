@@ -15,10 +15,12 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
     public DbSet<Unidade> Unidades => Set<Unidade>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Funcionario> Funcionarios => Set<Funcionario>();
+    public DbSet<FuncionarioVinculo> FuncionarioVinculos => Set<FuncionarioVinculo>();
     public DbSet<Cargo> Cargos => Set<Cargo>();
     public DbSet<ModuloSistema> ModulosSistema => Set<ModuloSistema>();
     public DbSet<LicencaModulo> LicencasModulo => Set<LicencaModulo>();
     public DbSet<PermissaoUsuario> PermissoesUsuario => Set<PermissaoUsuario>();
+    public DbSet<ConvitePrimeiroAcesso> ConvitesPrimeiroAcesso => Set<ConvitePrimeiroAcesso>();
     public DbSet<Paciente> Pacientes => Set<Paciente>();
     public DbSet<Sintoma> Sintomas => Set<Sintoma>();
     public DbSet<Pacote> Pacotes => Set<Pacote>();

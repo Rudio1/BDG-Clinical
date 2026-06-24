@@ -16,19 +16,22 @@ public sealed class UnitController : ControllerBase
     private readonly IGetUnitsService _getUnitsService;
     private readonly IUpdateUnitsService _updateUnitsService;
     private readonly IDeactivateUnitsService _deactivateUnitsService;
+    private readonly IReactivateUnitsService _reactivateUnitsService;
 
     public UnitController(
         ICreateUnitsService createUnitsService,
         IListUnitsService listUnitsService,
         IGetUnitsService getUnitsService,
         IUpdateUnitsService updateUnitsService,
-        IDeactivateUnitsService deactivateUnitsService)
+        IDeactivateUnitsService deactivateUnitsService,
+        IReactivateUnitsService reactivateUnitsService)
     {
         _createUnitsService = createUnitsService;
         _listUnitsService = listUnitsService;
         _getUnitsService = getUnitsService;
         _updateUnitsService = updateUnitsService;
         _deactivateUnitsService = deactivateUnitsService;
+        _reactivateUnitsService = reactivateUnitsService;
     }
 
     [HttpGet]
@@ -96,6 +99,23 @@ public sealed class UnitController : ControllerBase
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken cancellationToken)
     {
         var result = await _deactivateUnitsService.ExecuteAsync(id, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            var statusCode = result.Error == "Unidade não encontrada."
+                ? StatusCodes.Status404NotFound
+                : StatusCodes.Status400BadRequest;
+
+            return StatusCode(statusCode, new ApiResponse<object?>(null!, false, result.Error));
+        }
+
+        return Ok(new ApiResponse<UnitDto>(result.Value!, true));
+    }
+
+    [HttpPatch("{id:guid}/reactivate")]
+    public async Task<IActionResult> Reactivate(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _reactivateUnitsService.ExecuteAsync(id, cancellationToken);
 
         if (result.IsFailure)
         {
