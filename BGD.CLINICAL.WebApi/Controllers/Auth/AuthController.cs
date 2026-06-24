@@ -1,5 +1,5 @@
-using BGD.CLINICAL.Application.Identity;
 using BGD.CLINICAL.Application.Identity.Abstractions;
+using BGD.CLINICAL.Application.Identity.Authentications;
 using BGD.CLINICAL.Application.Identity.Dtos;
 using BGD.CLINICAL.Application.Identity.FirstAccess;
 using BGD.CLINICAL.WebApi.Models.Common;
@@ -13,6 +13,7 @@ namespace BGD.CLINICAL.WebApi.Controllers.Auth;
 public sealed class AuthController : ControllerBase
 {
     private readonly ILoginUsersService _loginUsersService;
+    private readonly ISwitchCompanyService _switchCompanyService;
     private readonly IRegisterCompaniesService _registerCompaniesService;
     private readonly IGetAuthenticatedUsersService _getAuthenticatedUsersService;
     private readonly IValidateFirstAccessEmailsService _validateFirstAccessEmailsService;
@@ -20,12 +21,14 @@ public sealed class AuthController : ControllerBase
 
     public AuthController(
         ILoginUsersService loginUsersService,
+        ISwitchCompanyService switchCompanyService,
         IRegisterCompaniesService registerCompaniesService,
         IGetAuthenticatedUsersService getAuthenticatedUsersService,
         IValidateFirstAccessEmailsService validateFirstAccessEmailsService,
         ICompleteFirstAccessService completeFirstAccessService)
     {
         _loginUsersService = loginUsersService;
+        _switchCompanyService = switchCompanyService;
         _registerCompaniesService = registerCompaniesService;
         _getAuthenticatedUsersService = getAuthenticatedUsersService;
         _validateFirstAccessEmailsService = validateFirstAccessEmailsService;
@@ -59,11 +62,23 @@ public sealed class AuthController : ControllerBase
 
         if (result.IsFailure)
         {
-            var statusCode = result.Error == IdentityConstants.MultiplasContas
-                ? StatusCodes.Status409Conflict
-                : StatusCodes.Status401Unauthorized;
+            return Unauthorized(new ApiResponse<object?>(null!, false, result.Error));
+        }
 
-            return StatusCode(statusCode, new ApiResponse<object?>(null!, false, result.Error));
+        return Ok(new ApiResponse<LoginResponse>(result.Value!, true));
+    }
+
+    [HttpPost("switch-company")]
+    [Authorize]
+    public async Task<IActionResult> SwitchCompany(
+        [FromBody] SwitchCompanyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _switchCompanyService.ExecuteAsync(request, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return BadRequest(new ApiResponse<object?>(null!, false, result.Error));
         }
 
         return Ok(new ApiResponse<AuthResponse>(result.Value!, true));

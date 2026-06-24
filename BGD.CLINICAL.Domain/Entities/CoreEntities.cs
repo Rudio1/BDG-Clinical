@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using BGD.CLINICAL.Domain.Common;
 using BGD.CLINICAL.Domain.Enums;
 using BGD.CLINICAL.Domain.Exceptions;
@@ -6,6 +7,10 @@ namespace BGD.CLINICAL.Domain.Entities;
 
 public sealed class Empresa : AggregateRoot
 {
+    private static readonly Regex HexColorPattern = new(
+        "^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$",
+        RegexOptions.Compiled);
+
     private Empresa()
     {
     }
@@ -33,6 +38,50 @@ public sealed class Empresa : AggregateRoot
     public ICollection<FuncionarioVinculo> FuncionarioVinculos { get; private set; } = [];
     public ICollection<Cargo> Cargos { get; private set; } = [];
     public ICollection<LicencaModulo> LicencasModulo { get; private set; } = [];
+
+    public void UpdateDetails(
+        string nome,
+        string? cnpj,
+        string? telefone,
+        string? email,
+        string? corPrincipal,
+        string? logo)
+    {
+        if (string.IsNullOrWhiteSpace(nome))
+        {
+            throw new DomainException("Informe o nome da empresa.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(corPrincipal) && !IsValidHexColor(corPrincipal))
+        {
+            throw new DomainException("Informe uma cor principal válida no formato hexadecimal (#RGB ou #RRGGBB).");
+        }
+
+        Nome = nome.Trim();
+        Cnpj = string.IsNullOrWhiteSpace(cnpj) ? null : cnpj.Trim();
+        Telefone = string.IsNullOrWhiteSpace(telefone) ? null : telefone.Trim();
+        Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
+        CorPrincipal = string.IsNullOrWhiteSpace(corPrincipal) ? null : corPrincipal.Trim();
+        Logo = string.IsNullOrWhiteSpace(logo) ? null : logo.Trim();
+        AtualizadoEm = DateTime.UtcNow;
+    }
+
+    public void Deactivate()
+    {
+        Ativo = false;
+        AtualizadoEm = DateTime.UtcNow;
+    }
+
+    public void Reactivate()
+    {
+        Ativo = true;
+        AtualizadoEm = DateTime.UtcNow;
+    }
+
+    private static bool IsValidHexColor(string corPrincipal)
+    {
+        return HexColorPattern.IsMatch(corPrincipal.Trim());
+    }
 }
 
 public sealed class Unidade : AggregateRoot

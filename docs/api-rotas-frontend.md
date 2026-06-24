@@ -106,7 +106,9 @@ Cadastro inicial de clínica + usuário administrador. **Público.**
   "nome": "João Admin",
   "email": "admin@clinica.com",
   "senha": "senha1234",
-  "cnpj": "12.345.678/0001-90"
+  "cnpj": "12.345.678/0001-90",
+  "telefone": "11999999999",
+  "corPrincipal": "#2563EB"
 }
 ```
 
@@ -116,7 +118,9 @@ Cadastro inicial de clínica + usuário administrador. **Público.**
 | `nome` | Sim | Nome do responsável |
 | `email` | Sim | E-mail válido; único globalmente entre contas ativas |
 | `senha` | Sim | Mínimo 8 caracteres |
-| `cnpj` | Não | Opcional |
+| `cnpj` | Não | Opcional; único entre empresas se informado |
+| `telefone` | Não | Telefone de contato da clínica |
+| `corPrincipal` | Não | Cor hex (`#RGB` ou `#RRGGBB`) para white label |
 
 **Response 200**
 
@@ -157,22 +161,65 @@ Cadastro inicial de clínica + usuário administrador. **Público.**
 ```json
 {
   "email": "admin@clinica.com",
-  "senha": "senha1234"
+  "senha": "senha1234",
+  "empresaId": null
 }
 ```
 
-**Response 200** — mesmo formato de `AuthResponse` do registrar.
+| Campo | Obrigatório | Regras |
+|-------|-------------|--------|
+| `email` | Sim | E-mail de login |
+| `senha` | Sim | Senha |
+| `empresaId` | Não | Quando o mesmo e-mail tem várias clínicas, informe o `empresaId` escolhido no seletor |
+
+**Response 200** — uma única clínica (login direto):
 
 ```json
 {
   "data": {
+    "requiresCompanySelection": false,
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "usuario": {
       "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
       "nome": "João Admin",
       "email": "admin@clinica.com",
-      "isAdmin": false
-    }
+      "isAdmin": true
+    },
+    "companies": null
+  },
+  "success": true,
+  "message": null
+}
+```
+
+**Response 200** — múltiplas clínicas (exibir seletor; reenviar login com `empresaId`):
+
+```json
+{
+  "data": {
+    "requiresCompanySelection": true,
+    "token": null,
+    "usuario": null,
+    "companies": [
+      {
+        "empresaId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "usuarioId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "nome": "Clínica Centro",
+        "logo": null,
+        "corPrincipal": "#2563EB",
+        "ativo": true,
+        "isCurrent": false
+      },
+      {
+        "empresaId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+        "usuarioId": "4fb96f75-6828-5673-c4gd-3d074g77bgb7",
+        "nome": "Clínica Norte",
+        "logo": "https://cdn.exemplo.com/logo.png",
+        "corPrincipal": "#1D4ED8",
+        "ativo": true,
+        "isCurrent": false
+      }
+    ]
   },
   "success": true,
   "message": null
@@ -201,13 +248,29 @@ Cadastro inicial de clínica + usuário administrador. **Público.**
 
 > O funcionário deve usar o **link enviado por e-mail** no cadastro (`POST /api/employees`). O front monta a tela em `/primeiro-acesso?token=...` (URL configurável no backend).
 
-**Response 409** — mesmo e-mail em mais de uma empresa:
+---
+
+### POST `/api/auth/switch-company`
+
+Troca o contexto para outra clínica do **mesmo e-mail** (usuário já autenticado). Retorna novo JWT.
+
+**Request**
+
+```json
+{
+  "empresaId": "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+}
+```
+
+**Response 200** — mesmo formato de `AuthResponse` (token + usuario).
+
+**Response 400** — sem acesso à clínica:
 
 ```json
 {
   "data": null,
   "success": false,
-  "message": "Existem múltiplas contas com este e-mail. Entre em contato com o suporte."
+  "message": "Você não tem acesso a esta clínica."
 }
 ```
 
@@ -360,7 +423,219 @@ Retorna o usuário autenticado a partir do token. **Requer Bearer token.**
 
 ---
 
-## 5. Unidades — `/api/units`
+## 5. Empresa — `/api/companies`
+
+Rotas para **listar**, **criar** e gerenciar clínicas do usuário logado. Um mesmo e-mail pode ter acesso a várias empresas (cada uma com um registro `Usuario`).
+
+| Método | Rota | Auth |
+|--------|------|------|
+| GET | `/api/companies` | Qualquer usuário autenticado — lista todas as clínicas do e-mail |
+| POST | `/api/companies` | Qualquer usuário autenticado — cria clínica e vincula o e-mail atual como Admin |
+| GET | `/api/companies/current` | Qualquer usuário autenticado — dados da clínica do token |
+| PUT | `/api/companies/current` | Somente Admin (`tipo_usuario = Admin`) |
+| PATCH | `/api/companies/{empresaId}/reactivate` | Somente Admin — reativa clínica inativa |
+| POST | `/api/companies/current/logo` | Somente Admin — upload multipart |
+
+A logo é armazenada no **Cloudflare R2**; o campo `logo` na resposta contém a URL pública para o frontend exibir a imagem.
+
+### GET `/api/companies`
+
+Lista todas as clínicas às quais o e-mail logado tem acesso.
+
+**Response 200**
+
+```json
+{
+  "data": [
+    {
+      "empresaId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "usuarioId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "nome": "Clínica Centro",
+      "logo": null,
+      "corPrincipal": "#2563EB",
+      "ativo": true,
+      "isCurrent": true
+    }
+  ],
+  "success": true,
+  "message": null
+}
+```
+
+---
+
+### POST `/api/companies`
+
+Cria uma nova clínica e vincula o **mesmo e-mail e senha** do usuário logado como Admin. Retorna JWT já no contexto da nova clínica.
+
+**Request**
+
+```json
+{
+  "nome": "Clínica Norte",
+  "cnpj": "98.765.432/0001-10",
+  "telefone": "11988887777",
+  "email": "contato@clinicanorte.com",
+  "corPrincipal": "#1D4ED8"
+}
+```
+
+| Campo | Obrigatório | Regras |
+|-------|-------------|--------|
+| `nome` | Sim | Nome da clínica |
+| `cnpj` | Não | Único entre empresas se informado |
+| `telefone` | Não | — |
+| `email` | Não | E-mail de contato da clínica; padrão = e-mail do usuário logado |
+| `corPrincipal` | Não | Hex `#RGB` ou `#RRGGBB` |
+
+**Response 200** — `AuthResponse` (novo token + usuario na nova clínica).
+
+---
+
+### GET `/api/companies/current`
+
+Retorna os dados da clínica vinculada ao token.
+
+**Response 200**
+
+```json
+{
+  "data": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "nome": "Clínica Exemplo",
+    "cnpj": "12.345.678/0001-90",
+    "telefone": "11999999999",
+    "email": "contato@clinica.com",
+    "logo": null,
+    "corPrincipal": "#2563EB",
+    "ativo": true,
+    "criadoEm": "2026-06-24T12:00:00Z",
+    "atualizadoEm": null
+  },
+  "success": true,
+  "message": null
+}
+```
+
+---
+
+### PUT `/api/companies/current`
+
+Atualiza dados da empresa. **Somente Admin.**
+
+**Request**
+
+```json
+{
+  "nome": "Clínica Exemplo LTDA",
+  "cnpj": "12.345.678/0001-90",
+  "telefone": "11988887777",
+  "email": "contato@clinica.com",
+  "corPrincipal": "#1D4ED8",
+  "logo": null,
+  "ativo": true
+}
+```
+
+| Campo | Obrigatório | Regras |
+|-------|-------------|--------|
+| `nome` | Sim | Nome da clínica |
+| `cnpj` | Não | Único entre empresas se informado |
+| `telefone` | Não | — |
+| `email` | Não | E-mail válido se informado |
+| `corPrincipal` | Não | Hex `#RGB` ou `#RRGGBB` |
+| `logo` | Não | URL da imagem; `null` no JSON mantém o valor atual |
+| `ativo` | Sim | `false` desativa a clínica; `true` em clínica inativa **reativa** (somente Admin) |
+
+**Response 200** — `CompanyDto` atualizado em `data`.
+
+**Response 400** — validação, CNPJ duplicado ou usuário sem permissão de Admin:
+
+```json
+{
+  "data": null,
+  "success": false,
+  "message": "Somente administradores podem reativar a clínica."
+}
+```
+
+---
+
+### PATCH `/api/companies/{empresaId}/reactivate`
+
+Reativa uma clínica **inativa** do mesmo e-mail. **Somente Admin.** Útil quando você está logado em outra clínica e quer reativar uma da lista (`GET /api/companies`). Sem body.
+
+**Response 200** — `CompanyDto` com `ativo: true`.
+
+**Response 400** — clínica já ativa ou sem permissão:
+
+```json
+{
+  "data": null,
+  "success": false,
+  "message": "Esta clínica já está ativa."
+}
+```
+
+---
+
+### POST `/api/companies/current/logo`
+
+Envia a logo da empresa para o Cloudflare R2. **Somente Admin.**
+
+**Content-Type:** `multipart/form-data`
+
+| Campo | Tipo | Obrigatório | Regras |
+|-------|------|-------------|--------|
+| `file` | arquivo | Sim | PNG, JPEG ou WebP; máximo 2 MB |
+
+**Exemplo (JavaScript)**
+
+```javascript
+const formData = new FormData();
+formData.append("file", arquivoSelecionado);
+
+await fetch("/api/companies/current/logo", {
+  method: "POST",
+  headers: { Authorization: `Bearer ${token}` },
+  body: formData,
+});
+```
+
+**Response 200** — `CompanyDto` com `logo` preenchido:
+
+```json
+{
+  "data": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "nome": "Clínica Exemplo",
+    "cnpj": "12.345.678/0001-90",
+    "telefone": "11999999999",
+    "email": "contato@clinica.com",
+    "logo": "https://pub-7e257d5d40d64b209cf998d85ebf78ed.r2.dev/companies/a1b2c3d4-e5f6-7890-abcd-ef1234567890/logo.png",
+    "corPrincipal": "#2563EB",
+    "ativo": true,
+    "criadoEm": "2026-06-24T12:00:00Z",
+    "atualizadoEm": "2026-06-24T15:30:00Z"
+  },
+  "success": true,
+  "message": null
+}
+```
+
+**Response 400** — formato inválido, arquivo grande ou storage não configurado:
+
+```json
+{
+  "data": null,
+  "success": false,
+  "message": "Formato não suportado. Envie PNG, JPEG ou WebP."
+}
+```
+
+---
+
+## 6. Unidades — `/api/units`
 
 Todas as rotas exigem **Bearer token**. Os dados são sempre filtrados pela empresa do token (multi-tenant).
 
@@ -548,7 +823,7 @@ Reativa uma unidade inativa. Sem body.
 
 ---
 
-## 6. Funcionários — `/api/employees`
+## 7. Funcionários — `/api/employees`
 
 Cadastro de colaboradores com acesso à plataforma. Todas as rotas exigem **Bearer token**.
 
@@ -851,7 +1126,7 @@ Reativa funcionário inativo, os vínculos inativos na empresa logada e o usuár
 
 ---
 
-## 7. Tipos TypeScript (referência)
+## 8. Tipos TypeScript (referência)
 
 ```typescript
 interface ApiResponse<T> {
@@ -863,6 +1138,35 @@ interface ApiResponse<T> {
 interface AuthResponse {
   token: string;
   usuario: AuthenticatedUser;
+}
+
+interface LoginResponse {
+  requiresCompanySelection: boolean;
+  token: string | null;
+  usuario: AuthenticatedUser | null;
+  companies: UserCompany[] | null;
+}
+
+interface UserCompany {
+  empresaId: string;
+  usuarioId: string;
+  nome: string;
+  logo: string | null;
+  corPrincipal: string | null;
+  ativo: boolean;
+  isCurrent: boolean;
+}
+
+interface CreateCompanyRequest {
+  nome: string;
+  cnpj?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  corPrincipal?: string | null;
+}
+
+interface SwitchCompanyRequest {
+  empresaId: string;
 }
 
 interface AuthenticatedUser {
@@ -897,6 +1201,19 @@ interface Unit {
   atualizadoEm: string | null;
 }
 
+interface Company {
+  id: string;
+  nome: string;
+  cnpj: string | null;
+  telefone: string | null;
+  email: string | null;
+  logo: string | null;
+  corPrincipal: string | null;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string | null;
+}
+
 interface EmployeeLink {
   id: string;
   empresaId: string | null;
@@ -923,32 +1240,37 @@ interface Employee {
 
 ---
 
-## 8. Fluxo sugerido no frontend
+## 9. Fluxo sugerido no frontend
 
 ```text
-1. Registrar clínica  → POST /api/auth/registrar  → guardar token
-2. Ou login           → POST /api/auth/login       → guardar token
+1. Registrar clínica  → POST /api/auth/registrar  → guardar token (primeira clínica)
+2. Ou login           → POST /api/auth/login       → se requiresCompanySelection, exibir seletor e relogar com empresaId
 3. Carregar sessão    → GET  /api/auth/me          → header Authorization
-4. CRUD unidades      → /api/units/*
-5. CRUD funcionários  → POST/PUT /api/employees (somente Admin) → e-mail de convite no create
-6. Funcionário abre link → /primeiro-acesso?token=...
+4. Listar clínicas    → GET  /api/companies        → menu de troca de contexto
+5. Nova clínica       → POST /api/companies         → retorna token na nova clínica
+6. Trocar clínica     → POST /api/auth/switch-company → novo token
+7. Dados da clínica   → GET  /api/companies/current (branding white label)
+8. Upload da logo     → POST /api/companies/current/logo (somente Admin, multipart)
+9. Editar clínica     → PUT  /api/companies/current (somente Admin)
+10. CRUD unidades     → /api/units/*
+11. CRUD funcionários → POST/PUT /api/employees (somente Admin) → e-mail de convite no create
+12. Funcionário abre link → /primeiro-acesso?token=...
    a. Digita e-mail   → POST /api/auth/primeiro-acesso/validar-email
    b. Define senha    → POST /api/auth/primeiro-acesso/concluir → guardar token
-7. Login funcionário  → se message = "É necessário definir a senha no primeiro acesso."
+13. Login funcionário → se message = "É necessário definir a senha no primeiro acesso."
                         → orientar a usar o link do e-mail (ou solicitar reenvio ao admin)
 ```
 
 ---
 
-## 9. Rotas ainda não disponíveis
+## 10. Rotas ainda não disponíveis
 
 | Recurso | Status |
 |---------|--------|
 | Reenvio de convite de primeiro acesso | Não implementado |
 | CRUD de cargos | Não implementado |
 | Permissões por módulo | Não implementado |
-| Login multi-empresa (seletor de tenant) | Não implementado |
 
 ---
 
-*Última atualização: junho/2026 — alinhado ao backend BGD Clinical (Units + Employees + Auth + Primeiro acesso).*
+*Última atualização: junho/2026 — alinhado ao backend BGD Clinical (Companies + Units + Employees + Auth + Primeiro acesso).*

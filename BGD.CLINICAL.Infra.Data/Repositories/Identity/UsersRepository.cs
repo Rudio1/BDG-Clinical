@@ -34,6 +34,21 @@ public sealed class UsersRepository : IUsersRepository
             .ToListAsync(cancellationToken);
     }
 
+    public Task<Usuario?> GetByEmailLoginAndEmpresaIdAsync(
+        string emailLogin,
+        Guid empresaId,
+        CancellationToken cancellationToken = default)
+    {
+        return _context.Usuarios
+            .Include(usuario => usuario.Empresa)
+            .FirstOrDefaultAsync(
+                usuario =>
+                    usuario.EmailLogin == emailLogin
+                    && usuario.EmpresaId == empresaId
+                    && usuario.AuthProvider == IdentityConstants.AuthProviderLocal,
+                cancellationToken);
+    }
+
     public Task<bool> ExistsActiveEmailLoginAsync(string emailLogin, CancellationToken cancellationToken = default)
     {
         return _context.Usuarios.AnyAsync(

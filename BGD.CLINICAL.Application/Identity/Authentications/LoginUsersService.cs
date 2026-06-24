@@ -1,4 +1,5 @@
 using BGD.CLINICAL.Application.Common;
+using BGD.CLINICAL.Application.Core.Companies;
 using BGD.CLINICAL.Application.Identity.Abstractions;
 using BGD.CLINICAL.Application.Identity.Dtos;
 using BGD.CLINICAL.Domain.Entities;
@@ -24,54 +25,76 @@ public sealed class LoginUsersService : ILoginUsersService
         _auditLogsService = auditLogsService;
     }
 
-    public async Task<Result<AuthResponse>> ExecuteAsync(
+    public async Task<Result<LoginResponse>> ExecuteAsync(
         LoginRequest request,
         string? ip,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Senha))
         {
-            return Result<AuthResponse>.Failure(IdentityValidation.CredenciaisInvalidas);
+            return Result<LoginResponse>.Failure(IdentityValidation.CredenciaisInvalidas);
         }
 
         var email = IdentityValidation.NormalizeEmail(request.Email);
         var usuarios = await _usersRepository.ListByEmailLoginAsync(email, cancellationToken);
 
         var candidatos = usuarios
-            .Where(usuario =>
-                usuario.Ativo
-                && usuario.AuthProvider == IdentityConstants.AuthProviderLocal
-                && usuario.Empresa.Ativo)
+            .Where(UserCompaniesMapper.IsEligibleForAccess)
             .ToList();
 
         if (candidatos.Count == 0)
         {
-            return Result<AuthResponse>.Failure(IdentityValidation.CredenciaisInvalidas);
+            var pendentes = usuarios.Where(usuario => usuario.Ativo && usuario.PendentePrimeiroAcesso).ToList();
+            if (pendentes.Count > 0)
+            {
+                return Result<LoginResponse>.Failure(IdentityValidation.PrimeiroAcessoPendente);
+            }
+
+            return Result<LoginResponse>.Failure(IdentityValidation.CredenciaisInvalidas);
         }
 
-        if (candidatos.Count > 1)
+        var senhaValida = candidatos.Any(usuario =>
+            !string.IsNullOrWhiteSpace(usuario.SenhaHash)
+            && _passwordHashGenerator.Verify(request.Senha, usuario.SenhaHash));
+
+        if (!senhaValida)
         {
-            return Result<AuthResponse>.Failure(IdentityValidation.MultiplasContas);
+            return Result<LoginResponse>.Failure(IdentityValidation.CredenciaisInvalidas);
         }
 
-        var usuario = candidatos[0];
-
-        if (usuario.PendentePrimeiroAcesso)
+        if (request.EmpresaId is null && candidatos.Count > 1)
         {
-            return Result<AuthResponse>.Failure(IdentityValidation.PrimeiroAcessoPendente);
+            return Result<LoginResponse>.Success(new LoginResponse(
+                RequiresCompanySelection: true,
+                Token: null,
+                Usuario: null,
+                Companies: UserCompaniesMapper.MapMany(candidatos)));
         }
 
-        if (string.IsNullOrWhiteSpace(usuario.SenhaHash)
-            || !_passwordHashGenerator.Verify(request.Senha, usuario.SenhaHash))
+        var usuario = ResolveUsuario(candidatos, request.EmpresaId);
+
+        if (usuario is null)
         {
-            return Result<AuthResponse>.Failure(IdentityValidation.CredenciaisInvalidas);
+            return Result<LoginResponse>.Failure(IdentityValidation.CredenciaisInvalidas);
         }
 
         var token = _tokenService.GenerateToken(usuario);
         await _auditLogsService.RegisterLoginAsync(usuario.Id, usuario.EmpresaId, ip, cancellationToken);
 
-        return Result<AuthResponse>.Success(new AuthResponse(
-            token,
-            AuthenticatedUsersMapper.Map(usuario)));
+        return Result<LoginResponse>.Success(new LoginResponse(
+            RequiresCompanySelection: false,
+            Token: token,
+            Usuario: AuthenticatedUsersMapper.Map(usuario),
+            Companies: null));
+    }
+
+    private static Usuario? ResolveUsuario(IReadOnlyList<Usuario> candidatos, Guid? empresaId)
+    {
+        if (empresaId.HasValue)
+        {
+            return candidatos.FirstOrDefault(usuario => usuario.EmpresaId == empresaId.Value);
+        }
+
+        return candidatos.Count == 1 ? candidatos[0] : null;
     }
 }

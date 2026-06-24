@@ -5,7 +5,7 @@ namespace BGD.CLINICAL.Application.Identity.Abstractions;
 
 public interface ILoginUsersService
 {
-    Task<Result<AuthResponse>> ExecuteAsync(
+    Task<Result<LoginResponse>> ExecuteAsync(
         LoginRequest request,
         string? ip,
         CancellationToken cancellationToken = default);
