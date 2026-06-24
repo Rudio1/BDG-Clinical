@@ -1,61 +1,79 @@
 using BGD.CLINICAL.Application.Abstractions.Persistence;
+using BGD.CLINICAL.Application.Abstractions.Security;
 using BGD.CLINICAL.Application.Common;
 using BGD.CLINICAL.Application.Core.Abstractions;
-using BGD.CLINICAL.Application.Core.Companies;
+using BGD.CLINICAL.Application.Core.Dtos;
+using BGD.CLINICAL.Application.Identity;
 using BGD.CLINICAL.Application.Identity.Abstractions;
 using BGD.CLINICAL.Application.Identity.Dtos;
 using BGD.CLINICAL.Domain.Entities;
 using BGD.CLINICAL.Domain.Enums;
 using BGD.CLINICAL.Domain.Exceptions;
 
-namespace BGD.CLINICAL.Application.Identity.Registrations;
+namespace BGD.CLINICAL.Application.Core.Companies;
 
-public sealed class RegisterCompaniesService : IRegisterCompaniesService
+public interface ICreateCompanyService
 {
+    Task<Result<AuthResponse>> ExecuteAsync(
+        CreateCompanyRequest request,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed class CreateCompanyService : ICreateCompanyService
+{
+    private readonly ICurrentTenantContext _tenantContext;
     private readonly IRepository<Empresa> _empresaRepository;
     private readonly ICompaniesRepository _companiesRepository;
     private readonly IUsersRepository _usersRepository;
-    private readonly IPasswordHashGenerator _passwordHashGenerator;
     private readonly ITokenService _tokenService;
     private readonly IUnitOfWork _unitOfWork;
 
-    public RegisterCompaniesService(
+    public CreateCompanyService(
+        ICurrentTenantContext tenantContext,
         IRepository<Empresa> empresaRepository,
         ICompaniesRepository companiesRepository,
         IUsersRepository usersRepository,
-        IPasswordHashGenerator passwordHashGenerator,
         ITokenService tokenService,
         IUnitOfWork unitOfWork)
     {
+        _tenantContext = tenantContext;
         _empresaRepository = empresaRepository;
         _companiesRepository = companiesRepository;
         _usersRepository = usersRepository;
-        _passwordHashGenerator = passwordHashGenerator;
         _tokenService = tokenService;
         _unitOfWork = unitOfWork;
     }
 
     public async Task<Result<AuthResponse>> ExecuteAsync(
-        RegisterCompanyRequest request,
+        CreateCompanyRequest request,
         CancellationToken cancellationToken = default)
     {
-        var validacao = ValidateRequest(request);
-        if (validacao is not null)
+        var validationError = ValidateRequest(request);
+        if (validationError is not null)
         {
-            return Result<AuthResponse>.Failure(validacao);
+            return Result<AuthResponse>.Failure(validationError);
         }
 
-        var email = IdentityValidation.NormalizeEmail(request.Email);
+        var usuarioAtual = await _usersRepository.GetByIdAsync(_tenantContext.UsuarioId, cancellationToken);
+
+        if (usuarioAtual is null || !usuarioAtual.Ativo)
+        {
+            return Result<AuthResponse>.Failure("Usuário não autenticado.");
+        }
+
+        if (usuarioAtual.PendentePrimeiroAcesso || string.IsNullOrWhiteSpace(usuarioAtual.SenhaHash))
+        {
+            return Result<AuthResponse>.Failure("Conclua o primeiro acesso antes de criar uma nova clínica.");
+        }
+
         var cnpj = CompanyValidation.NormalizeCnpj(request.Cnpj);
         var telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
         var corPrincipal = string.IsNullOrWhiteSpace(request.CorPrincipal)
             ? null
             : request.CorPrincipal.Trim();
-
-        if (await _usersRepository.ExistsActiveByEmailAsync(email, cancellationToken))
-        {
-            return Result<AuthResponse>.Failure("Já existe uma conta com este e-mail.");
-        }
+        var emailEmpresa = string.IsNullOrWhiteSpace(request.Email)
+            ? usuarioAtual.EmailLogin
+            : request.Email.Trim();
 
         if (cnpj is not null
             && await _companiesRepository.ExistsByCnpjAsync(cnpj, null, cancellationToken))
@@ -64,10 +82,10 @@ public sealed class RegisterCompaniesService : IRegisterCompaniesService
         }
 
         var empresa = new Empresa(
-            request.NomeEmpresa.Trim(),
+            request.Nome.Trim(),
             cnpj,
             telefone,
-            email);
+            emailEmpresa);
 
         if (corPrincipal is not null)
         {
@@ -87,46 +105,35 @@ public sealed class RegisterCompaniesService : IRegisterCompaniesService
             }
         }
 
-        var senhaHash = _passwordHashGenerator.GenerateHash(request.Senha);
-        var usuario = new Usuario(
+        var novoUsuario = new Usuario(
             empresa.Id,
             null,
-            request.Nome.Trim(),
-            email,
-            senhaHash,
+            usuarioAtual.Nome,
+            usuarioAtual.EmailLogin,
+            usuarioAtual.SenhaHash,
             TipoUsuario.Admin);
 
         await _empresaRepository.AddAsync(empresa, cancellationToken);
-        await _usersRepository.AddAsync(usuario, cancellationToken);
+        await _usersRepository.AddAsync(novoUsuario, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var token = _tokenService.GenerateToken(usuario);
+        var token = _tokenService.GenerateToken(novoUsuario);
 
         return Result<AuthResponse>.Success(new AuthResponse(
             token,
-            AuthenticatedUsersMapper.Map(usuario)));
+            AuthenticatedUsersMapper.Map(novoUsuario)));
     }
 
-    private static string? ValidateRequest(RegisterCompanyRequest request)
+    private static string? ValidateRequest(CreateCompanyRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.NomeEmpresa))
+        if (string.IsNullOrWhiteSpace(request.Nome))
         {
             return "Informe o nome da clínica.";
         }
 
-        if (string.IsNullOrWhiteSpace(request.Nome))
+        if (!string.IsNullOrWhiteSpace(request.Email) && !IdentityValidation.IsValidEmail(request.Email))
         {
-            return "Informe o seu nome.";
-        }
-
-        if (!IdentityValidation.IsValidEmail(request.Email))
-        {
-            return "Informe um e-mail válido.";
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Senha) || request.Senha.Length < IdentityConstants.SenhaMinimaCaracteres)
-        {
-            return $"A senha deve ter no mínimo {IdentityConstants.SenhaMinimaCaracteres} caracteres.";
+            return "Informe um e-mail válido para a clínica.";
         }
 
         return CompanyValidation.ValidateCorPrincipal(request.CorPrincipal);

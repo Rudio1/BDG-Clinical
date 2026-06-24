@@ -1,6 +1,7 @@
 using BGD.CLINICAL.Application.Common;
 using BGD.CLINICAL.Application.Identity.Abstractions;
 using BGD.CLINICAL.Application.Identity.Dtos;
+using BGD.CLINICAL.Domain.Enums;
 using System.Security.Claims;
 
 namespace BGD.CLINICAL.Application.Identity.Users;
@@ -28,7 +29,12 @@ public sealed class GetAuthenticatedUsersService : IGetAuthenticatedUsersService
 
         var usuario = await _usersRepository.GetByIdAsync(usuarioId, cancellationToken);
 
-        if (usuario is null || !usuario.Ativo || !usuario.Empresa.Ativo)
+        if (usuario is null || !usuario.Ativo)
+        {
+            return Result<AuthenticatedUserDto>.Failure("Usuário não autenticado.");
+        }
+
+        if (!usuario.Empresa.Ativo && usuario.TipoUsuario != TipoUsuario.Admin)
         {
             return Result<AuthenticatedUserDto>.Failure("Usuário não autenticado.");
         }

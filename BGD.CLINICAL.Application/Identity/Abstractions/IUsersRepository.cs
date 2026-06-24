@@ -8,6 +8,11 @@ public interface IUsersRepository
 
     Task<IReadOnlyList<Usuario>> ListByEmailLoginAsync(string emailLogin, CancellationToken cancellationToken = default);
 
+    Task<Usuario?> GetByEmailLoginAndEmpresaIdAsync(
+        string emailLogin,
+        Guid empresaId,
+        CancellationToken cancellationToken = default);
+
     Task<bool> ExistsActiveEmailLoginAsync(string emailLogin, CancellationToken cancellationToken = default);
 
     Task<bool> ExistsActiveByEmailAsync(string emailLogin, CancellationToken cancellationToken = default);

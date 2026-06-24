@@ -5,4 +5,6 @@ public sealed record RegisterCompanyRequest(
     string Nome,
     string Email,
     string Senha,
-    string? Cnpj);
+    string? Cnpj,
+    string? Telefone,
+    string? CorPrincipal);

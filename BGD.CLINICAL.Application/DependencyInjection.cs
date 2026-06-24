@@ -5,6 +5,7 @@ using BGD.CLINICAL.Application.Identity.Registrations;
 using BGD.CLINICAL.Application.Identity.FirstAccess;
 using BGD.CLINICAL.Application.Identity.Users;
 using BGD.CLINICAL.Application.Core.Units;
+using BGD.CLINICAL.Application.Core.Companies;
 using BGD.CLINICAL.Application.Core.Employees;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -15,6 +16,7 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddScoped<ILoginUsersService, LoginUsersService>();
+        services.AddScoped<ISwitchCompanyService, SwitchCompanyService>();
         services.AddScoped<IRegisterCompaniesService, RegisterCompaniesService>();
         services.AddScoped<IGetAuthenticatedUsersService, GetAuthenticatedUsersService>();
         services.AddScoped<IProvisionEmployeeUsersService, ProvisionEmployeeUsersService>();
@@ -29,6 +31,13 @@ public static class DependencyInjection
         services.AddScoped<IUpdateUnitsService, UpdateUnitsService>();
         services.AddScoped<IDeactivateUnitsService, DeactivateUnitsService>();
         services.AddScoped<IReactivateUnitsService, ReactivateUnitsService>();
+
+        services.AddScoped<IGetCurrentCompanyService, GetCurrentCompanyService>();
+        services.AddScoped<IListUserCompaniesService, ListUserCompaniesService>();
+        services.AddScoped<ICreateCompanyService, CreateCompanyService>();
+        services.AddScoped<IUpdateCurrentCompanyService, UpdateCurrentCompanyService>();
+        services.AddScoped<IReactivateCompanyService, ReactivateCompanyService>();
+        services.AddScoped<IUploadCompanyLogoService, UploadCompanyLogoService>();
 
         services.AddScoped<ICreateEmployeesService, CreateEmployeesService>();
         services.AddScoped<IListEmployeesService, ListEmployeesService>();
