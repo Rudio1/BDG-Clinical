@@ -7,6 +7,7 @@ public interface IEmployeesRepository
 {
     Task<IReadOnlyList<Funcionario>> ListByEmpresaIdAsync(
         Guid empresaId,
+        Guid? unidadeId,
         bool includeInactive,
         CancellationToken cancellationToken = default);
 

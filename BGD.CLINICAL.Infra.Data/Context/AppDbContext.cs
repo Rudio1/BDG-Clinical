@@ -38,6 +38,7 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
     public DbSet<AplicacaoPaciente> AplicacoesPaciente => Set<AplicacaoPaciente>();
     public DbSet<AplicacaoSintoma> AplicacoesSintomas => Set<AplicacaoSintoma>();
     public DbSet<Agendamento> Agendamentos => Set<Agendamento>();
+    public DbSet<HorarioFuncionamentoUnidade> HorariosFuncionamentoUnidade => Set<HorarioFuncionamentoUnidade>();
     public DbSet<DisponibilidadeFuncionario> DisponibilidadesFuncionario => Set<DisponibilidadeFuncionario>();
     public DbSet<BloqueioAgenda> BloqueiosAgenda => Set<BloqueioAgenda>();
     public DbSet<ContaGoogleConectada> ContasGoogleConectadas => Set<ContaGoogleConectada>();
@@ -47,6 +48,7 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
     public DbSet<ContaReceber> ContasReceber => Set<ContaReceber>();
     public DbSet<PagamentoPaciente> PagamentosPaciente => Set<PagamentoPaciente>();
     public DbSet<LogAuditoria> LogsAuditoria => Set<LogAuditoria>();
+    public DbSet<OutputMessageEmail> OutputMessagesEmail => Set<OutputMessageEmail>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

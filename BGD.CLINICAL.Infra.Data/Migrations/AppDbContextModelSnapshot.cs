@@ -117,6 +117,10 @@ namespace BGD.CLINICAL.Infra.Data.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("empresa_id");
 
+                    b.Property<bool>("ExcecaoHorario")
+                        .HasColumnType("bit")
+                        .HasColumnName("excecao_horario");
+
                     b.Property<Guid>("FuncionarioId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("funcionario_id");
@@ -135,6 +139,10 @@ namespace BGD.CLINICAL.Infra.Data.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("paciente_id");
 
+                    b.Property<Guid?>("ProcedimentoId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("procedimento_id");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -146,12 +154,6 @@ namespace BGD.CLINICAL.Infra.Data.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)")
                         .HasColumnName("tipo");
-
-                    b.Property<string>("Titulo")
-                        .IsRequired()
-                        .HasMaxLength(180)
-                        .HasColumnType("nvarchar(180)")
-                        .HasColumnName("titulo");
 
                     b.Property<Guid>("UnidadeId")
                         .HasColumnType("uniqueidentifier")
@@ -174,6 +176,9 @@ namespace BGD.CLINICAL.Infra.Data.Migrations
 
                     b.HasIndex("PacienteId")
                         .HasDatabaseName("ix_agendamento_paciente_id");
+
+                    b.HasIndex("ProcedimentoId")
+                        .HasDatabaseName("ix_agendamento_procedimento_id");
 
                     b.HasIndex("UnidadeId")
                         .HasDatabaseName("ix_agendamento_unidade_id");
@@ -1089,6 +1094,59 @@ namespace BGD.CLINICAL.Infra.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("BGD.CLINICAL.Domain.Entities.HorarioFuncionamentoUnidade", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit")
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("criado_em");
+
+                    b.Property<string>("DiaSemana")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("dia_semana");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("empresa_id");
+
+                    b.Property<TimeOnly>("HoraFim")
+                        .HasColumnType("time")
+                        .HasColumnName("hora_fim");
+
+                    b.Property<TimeOnly>("HoraInicio")
+                        .HasColumnType("time")
+                        .HasColumnName("hora_inicio");
+
+                    b.Property<Guid>("UnidadeId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("unidade_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_horario_funcionamento_unidade");
+
+                    b.HasIndex("UnidadeId")
+                        .HasDatabaseName("ix_horario_funcionamento_unidade_unidade_id");
+
+                    b.HasIndex("EmpresaId", "UnidadeId", "DiaSemana")
+                        .HasDatabaseName("ix_horario_funcionamento_unidade_empresa_id_unidade_id_dia_semana");
+
+                    b.ToTable("horario_funcionamento_unidade", (string)null);
+                });
+
             modelBuilder.Entity("BGD.CLINICAL.Domain.Entities.ItemPacote", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1492,6 +1550,82 @@ namespace BGD.CLINICAL.Infra.Data.Migrations
                         .HasDatabaseName("ix_movimentacao_estoque_empresa_id_unidade_id_produto_id_data");
 
                     b.ToTable("movimentacao_estoque", (string)null);
+                });
+
+            modelBuilder.Entity("BGD.CLINICAL.Domain.Entities.OutputMessageEmail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("criado_em");
+
+                    b.Property<string>("DestinatarioEmail")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("nvarchar(320)")
+                        .HasColumnName("destinatario_email");
+
+                    b.Property<string>("DestinatarioNome")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("destinatario_nome");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("empresa_id");
+
+                    b.Property<string>("Erro")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnName("erro");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("payload_json");
+
+                    b.Property<DateTime?>("ProcessadoEm")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("processado_em");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("status");
+
+                    b.Property<int>("Tentativas")
+                        .HasColumnType("int")
+                        .HasColumnName("tentativas");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)")
+                        .HasColumnName("tipo");
+
+                    b.Property<Guid?>("UnidadeId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("unidade_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_output_message_email");
+
+                    b.HasIndex("EmpresaId")
+                        .HasDatabaseName("ix_output_message_email_empresa_id");
+
+                    b.HasIndex("Status", "CriadoEm")
+                        .HasDatabaseName("ix_output_message_email_status_criado_em");
+
+                    b.ToTable("output_message_email", (string)null);
                 });
 
             modelBuilder.Entity("BGD.CLINICAL.Domain.Entities.Paciente", b =>
@@ -2259,6 +2393,12 @@ namespace BGD.CLINICAL.Infra.Data.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_agendamento_paciente_paciente_id");
 
+                    b.HasOne("BGD.CLINICAL.Domain.Entities.Procedimento", "Procedimento")
+                        .WithMany()
+                        .HasForeignKey("ProcedimentoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_agendamento_procedimento_procedimento_id");
+
                     b.HasOne("BGD.CLINICAL.Domain.Entities.Unidade", "Unidade")
                         .WithMany()
                         .HasForeignKey("UnidadeId")
@@ -2277,6 +2417,8 @@ namespace BGD.CLINICAL.Infra.Data.Migrations
                     b.Navigation("Funcionario");
 
                     b.Navigation("Paciente");
+
+                    b.Navigation("Procedimento");
 
                     b.Navigation("Unidade");
                 });
@@ -2650,6 +2792,27 @@ namespace BGD.CLINICAL.Infra.Data.Migrations
                     b.Navigation("Empresa");
 
                     b.Navigation("Funcionario");
+
+                    b.Navigation("Unidade");
+                });
+
+            modelBuilder.Entity("BGD.CLINICAL.Domain.Entities.HorarioFuncionamentoUnidade", b =>
+                {
+                    b.HasOne("BGD.CLINICAL.Domain.Entities.Empresa", "Empresa")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_horario_funcionamento_unidade_empresa_empresa_id");
+
+                    b.HasOne("BGD.CLINICAL.Domain.Entities.Unidade", "Unidade")
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_horario_funcionamento_unidade_unidade_unidade_id");
+
+                    b.Navigation("Empresa");
 
                     b.Navigation("Unidade");
                 });

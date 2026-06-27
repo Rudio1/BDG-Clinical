@@ -37,10 +37,11 @@ public sealed class EmployeeController : ControllerBase
 
     [HttpGet]
     public async Task<IActionResult> List(
+        [FromQuery] Guid? unidadeId = null,
         [FromQuery] bool includeInactive = false,
         CancellationToken cancellationToken = default)
     {
-        var result = await _listEmployeesService.ExecuteAsync(includeInactive, cancellationToken);
+        var result = await _listEmployeesService.ExecuteAsync(unidadeId, includeInactive, cancellationToken);
 
         return Ok(new ApiResponse<IReadOnlyList<EmployeeDto>>(result.Value!, true));
     }

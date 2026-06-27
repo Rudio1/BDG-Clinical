@@ -861,12 +861,13 @@ agendamento
 - paciente_id
 - funcionario_id
 - compra_paciente_id
+- procedimento_id
 - tipo
 - status
 - data_inicio
 - data_fim
-- titulo
 - observacao
+- excecao_horario
 - criado_por_id
 - cancelado_por_id
 - motivo_cancelamento
@@ -880,7 +881,7 @@ Enum `tipo`:
 CONSULTA
 RETORNO
 APLICACAO
-PRIMEIRA_CONSULTA
+AVALIACAO
 ```
 
 Enum `status`:
@@ -914,6 +915,41 @@ Um agendamento pode gerar uma aplicação.
 Nem todo agendamento precisa gerar aplicação.
 Agendamento cancelado não deve gerar aplicação.
 Agendamento concluído pode estar vinculado a AplicacaoPaciente realizada.
+```
+
+---
+
+### HorarioFuncionamentoUnidade
+
+Define o horário de funcionamento da clínica por unidade e dia da semana.
+
+```text
+horario_funcionamento_unidade
+- id
+- empresa_id
+- unidade_id
+- dia_semana
+- hora_inicio
+- hora_fim
+- ativo
+- criado_em
+- atualizado_em
+```
+
+Relacionamentos:
+
+```text
+HorarioFuncionamentoUnidade N:1 Empresa
+HorarioFuncionamentoUnidade N:1 Unidade
+Unidade 1:N HorarioFuncionamentoUnidade
+```
+
+Regras:
+
+```text
+Faixas inativas não entram na validação de novos agendamentos.
+Quando há faixas ativas, agendamentos devem caber em ao menos uma faixa do dia,
+salvo quando excecao_horario = true no agendamento.
 ```
 
 ---
@@ -1244,6 +1280,86 @@ Eventos de login e logout devem registrar usuário, data e ip.
 
 ---
 
+## 11. Notificações
+
+### OutputMessageEmail
+
+Fila de envio assíncrono de e-mails. A API REST enfileira mensagens durante os casos de uso; o host `BGD.CLINICAL.Jobs.Web` consome a tabela em background e dispara o SMTP sem bloquear a resposta HTTP.
+
+```text
+output_message_email
+- id
+- empresa_id
+- unidade_id
+- tipo
+- destinatario_email
+- destinatario_nome
+- payload_json
+- status
+- tentativas
+- erro
+- processado_em
+- criado_em
+- atualizado_em
+```
+
+Enum `tipo`:
+
+```text
+FirstAccessInvitation
+AppointmentConfirmation
+```
+
+Enum `status`:
+
+```text
+Pendente
+Processando
+Enviado
+Falhou
+```
+
+`payload_json` (referência para montagem do template no worker):
+
+| tipo | conteúdo JSON |
+|------|----------------|
+| `AppointmentConfirmation` | `{ "agendamentoId": "guid" }` |
+| `FirstAccessInvitation` | `{ "usuarioId": "guid", "rawToken": "string" }` |
+
+Relacionamentos:
+
+```text
+OutputMessageEmail N:1 Empresa
+OutputMessageEmail N:1 Unidade (opcional)
+```
+
+Índices:
+
+```text
+ix_output_message_email_empresa_id (empresa_id)
+ix_output_message_email_status_criado_em (status, criado_em)
+```
+
+Regras:
+
+```text
+Registro criado com status Pendente na mesma transação do caso de uso (SaveChanges da API).
+Worker marca Processando ao iniciar o envio e incrementa tentativas.
+Sucesso → status Enviado e processado_em preenchido.
+Falha → status volta a Pendente até 5 tentativas; após o limite → Falhou com erro persistido.
+unidade_id é opcional (ex.: convite de primeiro acesso não vincula unidade).
+Sem e-mail válido no destinatário, a API não enfileira (best-effort).
+```
+
+Origens atuais de enfileiramento:
+
+```text
+Criar agendamento → AppointmentConfirmation (se paciente possui e-mail válido)
+Criar funcionário → FirstAccessInvitation
+```
+
+---
+
 ## Relacionamentos Gerais
 
 ```text
@@ -1264,7 +1380,8 @@ Empresa
 ├── FormaPagamento
 ├── ContaReceber
 ├── PagamentoPaciente
-└── LogAuditoria
+├── LogAuditoria
+└── OutputMessageEmail
 ```
 
 ```text

@@ -963,9 +963,14 @@ Se o envio do e-mail falhar, a API retorna **400** (funcionário e convite já p
 
 **Query params**
 
-| Param | Tipo | Default |
-|-------|------|---------|
-| `includeInactive` | `boolean` | `false` |
+| Param | Tipo | Default | Descrição |
+|-------|------|---------|-----------|
+| `unidadeId` | `uuid` | — | Filtrar por unidade (inclui vínculo `linkToEmpresa` / empresa inteira) |
+| `includeInactive` | `boolean` | `false` | Incluir funcionários desativados |
+
+**Exemplo:** `GET /api/employees?unidadeId=a1b2c3d4-e5f6-7890-abcd-ef1234567890&includeInactive=false`
+
+> Com `unidadeId`, retorna funcionários com vínculo **ativo** na unidade informada **ou** vínculo ativo em toda a empresa (`links[].empresaId` preenchido). Sem `unidadeId`, lista todos os funcionários da empresa.
 
 **Response 200**
 
@@ -1230,7 +1235,8 @@ Reativa funcionário inativo, os vínculos inativos na empresa logada e o usuár
 { "data": null, "success": false, "message": "Não há vínculos inativos para reativar nesta empresa." }
 ```
 
-> Para listar inativos antes de reativar: `GET /api/employees?includeInactive=true`
+> Para listar inativos antes de reativar: `GET /api/employees?includeInactive=true`  
+> Para listar por unidade: `GET /api/employees?unidadeId={uuid}`
 
 ---
 
@@ -2062,7 +2068,197 @@ Cancela aplicação realizada e estorna **todas** as saídas vinculadas (`motivo
 
 ---
 
-## 20. Tipos TypeScript (referência)
+## 20. Agendamentos — `/api/appointments`
+
+Requer apenas autenticação (`Authorization: Bearer`).
+
+### GET `/api/appointments`
+
+Lista agendamentos do tenant com filtros opcionais.
+
+| Query | Tipo | Descrição |
+|-------|------|-----------|
+| `unidadeId` | uuid | Filtrar por unidade |
+| `funcionarioId` | uuid | Filtrar por funcionário |
+| `pacienteId` | uuid | Filtrar por paciente |
+| `status` | string | `Agendado`, `Confirmado`, `Concluido`, `Cancelado`, `Faltou` |
+| `dataInicioFrom` | datetime | Início do período |
+| `dataInicioTo` | datetime | Fim do período |
+
+**Exemplo:** `GET /api/appointments?funcionarioId=...&dataInicioFrom=2026-06-27T00:00:00Z&dataInicioTo=2026-06-27T23:59:59Z`
+
+### GET `/api/appointments/{id}`
+
+Retorna um agendamento por id.
+
+### POST `/api/appointments`
+
+Cria agendamento. `criadoPorId` e `empresaId` vêm do token.
+
+```json
+{
+  "unidadeId": "uuid",
+  "pacienteId": "uuid",
+  "funcionarioId": "uuid",
+  "tipo": "Aplicacao",
+  "dataInicio": "2026-06-27T14:00:00Z",
+  "dataFim": "2026-06-27T14:30:00Z",
+  "procedimentoId": "uuid",
+  "compraPacienteId": null,
+  "observacao": "Observação opcional",
+  "excecaoHorario": 0
+}
+```
+
+**Tipos:** `Consulta`, `Retorno`, `Aplicacao`, `Avaliacao`
+
+**Regras:**
+- `procedimentoId` obrigatório quando `tipo = Aplicacao`
+- Valida conflito de horário, bloqueio de agenda e disponibilidade do funcionário (quando configurada)
+- Valida horário de funcionamento da unidade (quando configurado em `/api/units/{unitId}/operating-hours`)
+- Fora do horário da unidade: envie `excecaoHorario: 1` para confirmar o agendamento (o usuário deve aceitar a exceção no front)
+- Após criar com sucesso, envia e-mail de confirmação ao paciente se houver `email` cadastrado (requer SMTP configurado)
+
+### PUT `/api/appointments/{id}`
+
+Atualiza agendamento pendente ou confirmado. Mesmo body do POST (`UpdateAppointmentRequest`).
+
+### PATCH `/api/appointments/{id}/confirm`
+
+Confirma agendamento (`Agendado` → `Confirmado`).
+
+### PATCH `/api/appointments/{id}/complete`
+
+Conclui agendamento. Para `tipo = Aplicacao`, cria `AplicacaoPaciente` vinculada e movimentações de estoque.
+
+```json
+{
+  "quantidadeUtilizada": 1.0,
+  "peso": 72.5
+}
+```
+
+`quantidadeUtilizada` obrigatória quando o procedimento possui produto aplicado.
+
+### PATCH `/api/appointments/{id}/cancel`
+
+```json
+{
+  "motivo": "Paciente solicitou cancelamento"
+}
+```
+
+### PATCH `/api/appointments/{id}/no-show`
+
+Marca falta do paciente (`Faltou`).
+
+**Resposta (`AppointmentDto`):**
+
+```json
+{
+  "id": "uuid",
+  "unidadeId": "uuid",
+  "unidadeNome": "Unidade Centro",
+  "pacienteId": "uuid",
+  "pacienteNome": "Maria Silva",
+  "funcionarioId": "uuid",
+  "funcionarioNome": "Dr. João",
+  "compraPacienteId": null,
+  "procedimentoId": "uuid",
+  "procedimentoNome": "Aplicação IM",
+  "tipo": "Aplicacao",
+  "status": "Agendado",
+  "dataInicio": "2026-06-27T14:00:00Z",
+  "dataFim": "2026-06-27T14:30:00Z",
+  "observacao": null,
+  "criadoPorId": "uuid",
+  "criadoPorNome": "Admin",
+  "canceladoPorId": null,
+  "motivoCancelamento": null,
+  "excecaoHorario": false,
+  "aplicacaoPacienteId": null,
+  "criadoEm": "2026-06-27T10:00:00Z",
+  "atualizadoEm": null
+}
+```
+
+---
+
+## 21. Horário de funcionamento da unidade — `/api/units/{unitId}/operating-hours`
+
+Requer apenas autenticação. Define em quais dias/horários a unidade aceita agendamentos (validado em `POST`/`PUT` de appointments).
+
+### GET `/api/units/{unitId}/operating-hours`
+
+Lista faixas de funcionamento da unidade.
+
+| Query | Tipo | Descrição |
+|-------|------|-----------|
+| `includeInactive` | bool | Incluir faixas inativas (default `false`) |
+
+**Resposta (`UnitOperatingHourDto[]`):**
+
+```json
+[
+  {
+    "id": "uuid",
+    "unidadeId": "uuid",
+    "diaSemana": "Segunda",
+    "horaInicio": "08:00:00",
+    "horaFim": "18:00:00",
+    "ativo": true,
+    "criadoEm": "2026-06-27T10:00:00Z",
+    "atualizadoEm": null
+  }
+]
+```
+
+**`diaSemana`:** `Domingo`, `Segunda`, `Terca`, `Quarta`, `Quinta`, `Sexta`, `Sabado`
+
+### POST `/api/units/{unitId}/operating-hours`
+
+Cadastra uma faixa de funcionamento.
+
+```json
+{
+  "diaSemana": "Segunda",
+  "horaInicio": "08:00:00",
+  "horaFim": "18:00:00"
+}
+```
+
+**Regras:** no mesmo dia, faixas não podem ser iguais nem se sobrepor.
+
+### PATCH `/api/unit-operating-hours/{id}/active`
+
+Ativa ou inativa um horário pelo id, sem alterar dia/horários.
+
+```json
+{
+  "ativo": false
+}
+```
+
+`ativo: true` reativa; `ativo: false` inativa. Ao reativar, valida sobreposição com outras faixas **ativas** do mesmo dia.
+
+### PUT `/api/units/{unitId}/operating-hours/{id}`
+
+Atualiza faixa existente.
+
+```json
+{
+  "diaSemana": "Segunda",
+  "horaInicio": "09:00:00",
+  "horaFim": "17:00:00",
+  "ativo": true
+}
+```
+
+**Regras:** no mesmo dia da unidade, não é permitido cadastrar faixas iguais nem que se sobreponham (ex.: `08:00–18:00` com `10:00–13:00`). Faixas adjacentes sem sobreposição são permitidas (ex.: `08:00–18:00` e `20:00–22:00`).
+
+---
+
+## 22. Tipos TypeScript (referência)
 
 ```typescript
 interface ApiResponse<T> {
@@ -2379,11 +2575,59 @@ interface UpdatePatientApplicationRequest {
   observacao?: string | null;
   sintomaIds?: string[] | null;
 }
+
+interface Appointment {
+  id: string;
+  unidadeId: string;
+  unidadeNome: string;
+  pacienteId: string;
+  pacienteNome: string;
+  funcionarioId: string;
+  funcionarioNome: string;
+  compraPacienteId: string | null;
+  procedimentoId: string | null;
+  procedimentoNome: string | null;
+  tipo: 'Consulta' | 'Retorno' | 'Aplicacao' | 'Avaliacao';
+  status: 'Agendado' | 'Confirmado' | 'Concluido' | 'Cancelado' | 'Faltou';
+  dataInicio: string;
+  dataFim: string;
+  observacao: string | null;
+  criadoPorId: string;
+  criadoPorNome: string;
+  canceladoPorId: string | null;
+  motivoCancelamento: string | null;
+  aplicacaoPacienteId: string | null;
+  criadoEm: string;
+  atualizadoEm: string | null;
+}
+
+interface CreateAppointmentRequest {
+  unidadeId: string;
+  pacienteId: string;
+  funcionarioId: string;
+  tipo: 'Consulta' | 'Retorno' | 'Aplicacao' | 'Avaliacao';
+  dataInicio: string;
+  dataFim: string;
+  procedimentoId?: string | null;
+  compraPacienteId?: string | null;
+  observacao?: string | null;
+}
+
+interface UpdateAppointmentRequest extends CreateAppointmentRequest {}
+
+interface CancelAppointmentRequest {
+  motivo: string;
+}
+
+interface CompleteAppointmentRequest {
+  quantidadeUtilizada?: number | null;
+  peso?: number | null;
+}
 ```
 
 ---
 
-## 21. Fluxo sugerido no frontend
+## 23. Fluxo sugerido no frontend
 
 ```text
 1. Registrar clínica  → POST /api/auth/registrar  → guardar token (primeira clínica)
@@ -2409,6 +2653,7 @@ interface UpdatePatientApplicationRequest {
 21. Histórico estoque → GET /api/stock-movements
 22. CRUD procedimentos → /api/procedures/*
 23. Aplicações paciente → /api/patient-applications/* (sempre via procedimentoId)
+24. CRUD agendamentos → /api/appointments/*
 23. Funcionário abre link → /primeiro-acesso?token=...
    a. Digita e-mail   → POST /api/auth/primeiro-acesso/validar-email
    b. Define senha    → POST /api/auth/primeiro-acesso/concluir → guardar token
@@ -2418,13 +2663,13 @@ interface UpdatePatientApplicationRequest {
 
 ---
 
-## 22. Rotas ainda não disponíveis
+## 24. Rotas ainda não disponíveis
 
 | Recurso | Status |
 |---------|--------|
 | Reenvio de convite de primeiro acesso | Não implementado |
-| Permissões por módulo | Não implementado |
+| Permissões por módulo | Não implementado (attributes prontos para uso futuro) |
 
 ---
 
-*Última atualização: junho/2026 — alinhado ao backend BGD Clinical (… + Procedures simplificado + PatientApplications somente via procedimento).*
+*Última atualização: junho/2026 — alinhado ao backend BGD Clinical (… + Appointments / Agendamentos).*

@@ -123,18 +123,13 @@ public sealed class CreateEmployeesService : ICreateEmployeesService
                 return Result<EmployeeDto>.Failure(stageResult.Error!);
             }
 
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            var emailResult = await _firstAccessInvitationService.SendInvitationEmailAsync(
+            await _firstAccessInvitationService.EnqueueInvitationEmailAsync(
+                empresaId,
                 usuario,
-                empresa.Nome,
                 stageResult.Value!,
                 cancellationToken);
 
-            if (emailResult.IsFailure)
-            {
-                return Result<EmployeeDto>.Failure(emailResult.Error!);
-            }
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             await _auditLogsService.RegisterEntityChangeAsync(
                 empresaId,

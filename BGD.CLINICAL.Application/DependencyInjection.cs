@@ -19,6 +19,9 @@ using BGD.CLINICAL.Application.Inventory.StockBalances;
 using BGD.CLINICAL.Application.Inventory.StockMovements;
 using BGD.CLINICAL.Application.Applications.PatientApplications;
 using BGD.CLINICAL.Application.Applications.Procedures;
+using BGD.CLINICAL.Application.Schedules.Appointments;
+using BGD.CLINICAL.Application.Schedules.UnitOperatingHours;
+using BGD.CLINICAL.Application.Notifications.EmailOutbox;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BGD.CLINICAL.Application;
@@ -131,6 +134,29 @@ public static class DependencyInjection
         services.AddScoped<IUpdateProceduresService, UpdateProceduresService>();
         services.AddScoped<IDeactivateProceduresService, DeactivateProceduresService>();
         services.AddScoped<IReactivateProceduresService, ReactivateProceduresService>();
+
+        services.AddScoped<ICreateAppointmentsService, CreateAppointmentsService>();
+        services.AddScoped<IEmailOutboxEnqueueService, EmailOutboxEnqueueService>();
+        services.AddScoped<IProcessEmailOutboxService, ProcessEmailOutboxService>();
+        services.AddScoped<IListAppointmentsService, ListAppointmentsService>();
+        services.AddScoped<IGetAppointmentsService, GetAppointmentsService>();
+        services.AddScoped<IUpdateAppointmentsService, UpdateAppointmentsService>();
+        services.AddScoped<IConfirmAppointmentsService, ConfirmAppointmentsService>();
+        services.AddScoped<ICompleteAppointmentsService, CompleteAppointmentsService>();
+        services.AddScoped<ICancelAppointmentsService, CancelAppointmentsService>();
+        services.AddScoped<IMarkNoShowAppointmentsService, MarkNoShowAppointmentsService>();
+
+        services.AddScoped<IListUnitOperatingHoursService, ListUnitOperatingHoursService>();
+        services.AddScoped<ICreateUnitOperatingHoursService, CreateUnitOperatingHoursService>();
+        services.AddScoped<IUpdateUnitOperatingHoursService, UpdateUnitOperatingHoursService>();
+        services.AddScoped<ISetUnitOperatingHourActiveStatusService, SetUnitOperatingHourActiveStatusService>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddApplicationJobs(this IServiceCollection services)
+    {
+        services.AddScoped<IProcessEmailOutboxService, ProcessEmailOutboxService>();
 
         return services;
     }

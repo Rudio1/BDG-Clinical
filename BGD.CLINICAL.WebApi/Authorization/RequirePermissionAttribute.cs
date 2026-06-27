@@ -10,22 +10,19 @@ namespace BGD.CLINICAL.WebApi.Authorization;
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]
 public sealed class RequirePermissionAttribute : Attribute, IAsyncAuthorizationFilter
 {
-    public RequirePermissionAttribute(string moduleCode, ModulePermissionAction? action = null)
+    public RequirePermissionAttribute(string moduleCode)
     {
         ModuleCode = moduleCode;
-        Action = action;
     }
 
     public string ModuleCode { get; }
-
-    public ModulePermissionAction? Action { get; }
 
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
         var permissions = context.HttpContext.RequestServices.GetRequiredService<IUserPermissionsRepository>();
         var tenant = context.HttpContext.RequestServices.GetRequiredService<ICurrentTenantContext>();
 
-        var action = Action ?? ResolveActionFromHttpMethod(context.HttpContext.Request.Method);
+        var action = ResolveActionFromHttpMethod(context.HttpContext.Request.Method);
 
         var hasPermission = await permissions.HasPermissionAsync(
             tenant.UsuarioId,

@@ -10,43 +10,18 @@ public sealed class Agendamento : AggregateRoot
     {
     }
 
-    public Agendamento(
-        Guid empresaId,
-        Guid unidadeId,
-        Guid pacienteId,
-        Guid funcionarioId,
-        Guid? compraPacienteId,
-        TipoAgendamento tipo,
-        DateTime dataInicio,
-        DateTime dataFim,
-        string titulo,
-        Guid criadoPorId)
-        : base(Guid.NewGuid())
-    {
-        EmpresaId = empresaId;
-        UnidadeId = unidadeId;
-        PacienteId = pacienteId;
-        FuncionarioId = funcionarioId;
-        CompraPacienteId = compraPacienteId;
-        Tipo = tipo;
-        Status = StatusAgendamento.Agendado;
-        DataInicio = dataInicio;
-        DataFim = dataFim;
-        Titulo = titulo;
-        CriadoPorId = criadoPorId;
-    }
-
     public Guid EmpresaId { get; private set; }
     public Guid UnidadeId { get; private set; }
     public Guid PacienteId { get; private set; }
     public Guid FuncionarioId { get; private set; }
     public Guid? CompraPacienteId { get; private set; }
+    public Guid? ProcedimentoId { get; private set; }
     public TipoAgendamento Tipo { get; private set; }
     public StatusAgendamento Status { get; private set; }
     public DateTime DataInicio { get; private set; }
     public DateTime DataFim { get; private set; }
-    public string Titulo { get; private set; } = string.Empty;
     public string? Observacao { get; private set; }
+    public bool ExcecaoHorario { get; private set; }
     public Guid CriadoPorId { get; private set; }
     public Guid? CanceladoPorId { get; private set; }
     public string? MotivoCancelamento { get; private set; }
@@ -56,10 +31,137 @@ public sealed class Agendamento : AggregateRoot
     public Paciente Paciente { get; private set; } = null!;
     public Funcionario Funcionario { get; private set; } = null!;
     public CompraPaciente? CompraPaciente { get; private set; }
+    public Procedimento? Procedimento { get; private set; }
     public Usuario CriadoPor { get; private set; } = null!;
     public Usuario? CanceladoPor { get; private set; }
     public AplicacaoPaciente? AplicacaoPaciente { get; private set; }
     public AgendamentoGoogleSync? GoogleSync { get; private set; }
+
+    public static Agendamento Create(
+        Guid empresaId,
+        Guid unidadeId,
+        Guid pacienteId,
+        Guid funcionarioId,
+        Guid? compraPacienteId,
+        Guid? procedimentoId,
+        TipoAgendamento tipo,
+        DateTime dataInicio,
+        DateTime dataFim,
+        string? observacao,
+        bool excecaoHorario,
+        Guid criadoPorId)
+    {
+        ValidateCore(
+            empresaId,
+            unidadeId,
+            pacienteId,
+            funcionarioId,
+            tipo,
+            procedimentoId,
+            dataInicio,
+            dataFim,
+            criadoPorId);
+
+        return new Agendamento
+        {
+            Id = Guid.NewGuid(),
+            CriadoEm = DateTime.UtcNow,
+            EmpresaId = empresaId,
+            UnidadeId = unidadeId,
+            PacienteId = pacienteId,
+            FuncionarioId = funcionarioId,
+            CompraPacienteId = compraPacienteId,
+            ProcedimentoId = procedimentoId,
+            Tipo = tipo,
+            Status = StatusAgendamento.Agendado,
+            DataInicio = dataInicio,
+            DataFim = dataFim,
+            Observacao = string.IsNullOrWhiteSpace(observacao) ? null : observacao.Trim(),
+            ExcecaoHorario = excecaoHorario,
+            CriadoPorId = criadoPorId
+        };
+    }
+
+    public void UpdateDetails(
+        Guid unidadeId,
+        Guid pacienteId,
+        Guid funcionarioId,
+        Guid? compraPacienteId,
+        Guid? procedimentoId,
+        TipoAgendamento tipo,
+        DateTime dataInicio,
+        DateTime dataFim,
+        string? observacao,
+        bool excecaoHorario)
+    {
+        EnsureEditable();
+
+        ValidateCore(
+            EmpresaId,
+            unidadeId,
+            pacienteId,
+            funcionarioId,
+            tipo,
+            procedimentoId,
+            dataInicio,
+            dataFim,
+            CriadoPorId);
+
+        UnidadeId = unidadeId;
+        PacienteId = pacienteId;
+        FuncionarioId = funcionarioId;
+        CompraPacienteId = compraPacienteId;
+        ProcedimentoId = procedimentoId;
+        Tipo = tipo;
+        DataInicio = dataInicio;
+        DataFim = dataFim;
+        Observacao = string.IsNullOrWhiteSpace(observacao) ? null : observacao.Trim();
+        ExcecaoHorario = excecaoHorario;
+        AtualizadoEm = DateTime.UtcNow;
+    }
+
+    public void Confirm()
+    {
+        if (Status != StatusAgendamento.Agendado)
+        {
+            throw new DomainException("Somente agendamentos pendentes podem ser confirmados.");
+        }
+
+        Status = StatusAgendamento.Confirmado;
+        AtualizadoEm = DateTime.UtcNow;
+    }
+
+    public void MarkAsCompleted()
+    {
+        if (Status is StatusAgendamento.Cancelado or StatusAgendamento.Faltou)
+        {
+            throw new DomainException("Agendamento cancelado ou com falta não pode ser concluído.");
+        }
+
+        if (Status == StatusAgendamento.Concluido)
+        {
+            throw new DomainException("Agendamento já está concluído.");
+        }
+
+        if (Status != StatusAgendamento.Confirmado && Status != StatusAgendamento.Agendado)
+        {
+            throw new DomainException("Somente agendamentos confirmados ou pendentes podem ser concluídos.");
+        }
+
+        Status = StatusAgendamento.Concluido;
+        AtualizadoEm = DateTime.UtcNow;
+    }
+
+    public void MarkAsNoShow()
+    {
+        if (Status is StatusAgendamento.Cancelado or StatusAgendamento.Faltou or StatusAgendamento.Concluido)
+        {
+            throw new DomainException("Este agendamento não pode ser marcado como falta.");
+        }
+
+        Status = StatusAgendamento.Faltou;
+        AtualizadoEm = DateTime.UtcNow;
+    }
 
     public void Cancel(Guid canceladoPorId, string motivo)
     {
@@ -89,26 +191,132 @@ public sealed class Agendamento : AggregateRoot
         AtualizadoEm = DateTime.UtcNow;
     }
 
-    public void Confirm()
+    private void EnsureEditable()
     {
-        if (Status != StatusAgendamento.Agendado)
+        if (Status is not (StatusAgendamento.Agendado or StatusAgendamento.Confirmado))
         {
-            throw new DomainException("Somente agendamentos pendentes podem ser confirmados.");
+            throw new DomainException("Somente agendamentos pendentes ou confirmados podem ser alterados.");
+        }
+    }
+
+    private static void ValidateCore(
+        Guid empresaId,
+        Guid unidadeId,
+        Guid pacienteId,
+        Guid funcionarioId,
+        TipoAgendamento tipo,
+        Guid? procedimentoId,
+        DateTime dataInicio,
+        DateTime dataFim,
+        Guid criadoPorId)
+    {
+        if (empresaId == Guid.Empty)
+        {
+            throw new DomainException("Informe a empresa do agendamento.");
         }
 
-        Status = StatusAgendamento.Confirmado;
+        if (unidadeId == Guid.Empty)
+        {
+            throw new DomainException("Informe a unidade do agendamento.");
+        }
+
+        if (pacienteId == Guid.Empty)
+        {
+            throw new DomainException("Informe o paciente do agendamento.");
+        }
+
+        if (funcionarioId == Guid.Empty)
+        {
+            throw new DomainException("Informe o funcionário do agendamento.");
+        }
+
+        if (criadoPorId == Guid.Empty)
+        {
+            throw new DomainException("Informe o usuário que cria o agendamento.");
+        }
+
+        if (dataFim <= dataInicio)
+        {
+            throw new DomainException("A data de término deve ser posterior à data de início.");
+        }
+
+        if (tipo == TipoAgendamento.Aplicacao && (!procedimentoId.HasValue || procedimentoId.Value == Guid.Empty))
+        {
+            throw new DomainException("Informe o procedimento para agendamentos do tipo aplicação.");
+        }
+
+        if (tipo != TipoAgendamento.Aplicacao && procedimentoId.HasValue && procedimentoId.Value != Guid.Empty)
+        {
+            throw new DomainException("Procedimento só pode ser informado em agendamentos do tipo aplicação.");
+        }
+    }
+}
+
+public sealed class HorarioFuncionamentoUnidade : AggregateRoot
+{
+    private HorarioFuncionamentoUnidade()
+    {
+    }
+
+    public HorarioFuncionamentoUnidade(
+        Guid empresaId,
+        Guid unidadeId,
+        DiaSemana diaSemana,
+        TimeOnly horaInicio,
+        TimeOnly horaFim)
+        : base(Guid.NewGuid())
+    {
+        ValidateTimes(horaInicio, horaFim);
+
+        EmpresaId = empresaId;
+        UnidadeId = unidadeId;
+        DiaSemana = diaSemana;
+        HoraInicio = horaInicio;
+        HoraFim = horaFim;
+        Ativo = true;
+        CriadoEm = DateTime.UtcNow;
+    }
+
+    public Guid EmpresaId { get; private set; }
+    public Guid UnidadeId { get; private set; }
+    public DiaSemana DiaSemana { get; private set; }
+    public TimeOnly HoraInicio { get; private set; }
+    public TimeOnly HoraFim { get; private set; }
+    public bool Ativo { get; private set; }
+
+    public Empresa Empresa { get; private set; } = null!;
+    public Unidade Unidade { get; private set; } = null!;
+
+    public void UpdateDetails(DiaSemana diaSemana, TimeOnly horaInicio, TimeOnly horaFim, bool ativo)
+    {
+        ValidateTimes(horaInicio, horaFim);
+
+        DiaSemana = diaSemana;
+        HoraInicio = horaInicio;
+        HoraFim = horaFim;
+        Ativo = ativo;
         AtualizadoEm = DateTime.UtcNow;
     }
 
-    public void MarkAsCompleted()
+    public void SetActive(bool ativo)
     {
-        if (Status == StatusAgendamento.Cancelado)
+        if (Ativo == ativo)
         {
-            throw new DomainException("Agendamento cancelado não pode ser concluído.");
+            throw new DomainException(ativo
+                ? "Horário de funcionamento já está ativo."
+                : "Horário de funcionamento já está inativo.");
         }
 
-        Status = StatusAgendamento.Concluido;
+        Ativo = ativo;
         AtualizadoEm = DateTime.UtcNow;
+    }
+
+    private static void ValidateTimes(TimeOnly horaInicio, TimeOnly horaFim)
+    {
+        if (horaFim <= horaInicio)
+        {
+            throw new DomainException("O horário de término deve ser posterior ao horário de início.");
+        }
     }
 }
 

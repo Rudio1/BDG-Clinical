@@ -9,6 +9,7 @@ namespace BGD.CLINICAL.Application.Core.Employees;
 public interface IListEmployeesService
 {
     Task<Result<IReadOnlyList<EmployeeDto>>> ExecuteAsync(
+        Guid? unidadeId = null,
         bool includeInactive = false,
         CancellationToken cancellationToken = default);
 }
@@ -27,12 +28,14 @@ public sealed class ListEmployeesService : IListEmployeesService
     }
 
     public async Task<Result<IReadOnlyList<EmployeeDto>>> ExecuteAsync(
+        Guid? unidadeId = null,
         bool includeInactive = false,
         CancellationToken cancellationToken = default)
     {
         var empresaId = _tenantContext.EmpresaId;
         var funcionarios = await _employeesRepository.ListByEmpresaIdAsync(
             empresaId,
+            unidadeId,
             includeInactive,
             cancellationToken);
 

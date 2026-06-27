@@ -5,6 +5,8 @@ using BGD.CLINICAL.Application.Patients.Abstractions;
 using BGD.CLINICAL.Application.Inventory.Abstractions;
 using BGD.CLINICAL.Application.Applications.Abstractions;
 using BGD.CLINICAL.Application.Modules.Abstractions;
+using BGD.CLINICAL.Application.Notifications.Abstractions;
+using BGD.CLINICAL.Application.Schedules.Abstractions;
 using BGD.CLINICAL.Infra.Data.Context;
 using BGD.CLINICAL.Infra.Data.Repositories;
 using BGD.CLINICAL.Infra.Data.Repositories.Core;
@@ -13,6 +15,8 @@ using BGD.CLINICAL.Infra.Data.Repositories.Inventory;
 using BGD.CLINICAL.Infra.Data.Repositories.Patients;
 using BGD.CLINICAL.Infra.Data.Repositories.Applications;
 using BGD.CLINICAL.Infra.Data.Repositories.Modules;
+using BGD.CLINICAL.Infra.Data.Repositories.Notifications;
+using BGD.CLINICAL.Infra.Data.Repositories.Schedules;
 using BGD.CLINICAL.Infra.Data.Services.Audits;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -53,6 +57,9 @@ public static class DependencyInjection
         services.AddScoped<ISymptomsRepository, SymptomsRepository>();
         services.AddScoped<IModuleLicensesRepository, ModuleLicensesRepository>();
         services.AddScoped<IUserPermissionsRepository, UserPermissionsRepository>();
+        services.AddScoped<IAppointmentsRepository, AppointmentsRepository>();
+        services.AddScoped<IUnitOperatingHoursRepository, UnitOperatingHoursRepository>();
+        services.AddScoped<IEmailOutboxRepository, EmailOutboxRepository>();
 
         return services;
     }

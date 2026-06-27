@@ -13,14 +13,15 @@ internal sealed class AgendamentoConfiguration : IEntityTypeConfiguration<Agenda
         builder.HasKey(entity => entity.Id);
         builder.Property(entity => entity.Tipo).HasConversion<string>().HasMaxLength(40).IsRequired();
         builder.Property(entity => entity.Status).HasConversion<string>().HasMaxLength(40).IsRequired();
-        builder.Property(entity => entity.Titulo).HasMaxLength(180).IsRequired();
         builder.Property(entity => entity.Observacao).HasMaxLength(2000);
+        builder.Property(entity => entity.ExcecaoHorario).IsRequired();
         builder.Property(entity => entity.MotivoCancelamento).HasMaxLength(500);
         builder.HasOne(entity => entity.Empresa).WithMany().HasForeignKey(entity => entity.EmpresaId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(entity => entity.Unidade).WithMany().HasForeignKey(entity => entity.UnidadeId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(entity => entity.Paciente).WithMany().HasForeignKey(entity => entity.PacienteId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(entity => entity.Funcionario).WithMany().HasForeignKey(entity => entity.FuncionarioId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(entity => entity.CompraPaciente).WithMany(entity => entity.Agendamentos).HasForeignKey(entity => entity.CompraPacienteId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(entity => entity.Procedimento).WithMany().HasForeignKey(entity => entity.ProcedimentoId).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         builder.HasOne(entity => entity.CriadoPor).WithMany().HasForeignKey(entity => entity.CriadoPorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(entity => entity.CanceladoPor).WithMany().HasForeignKey(entity => entity.CanceladoPorId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(entity => new { entity.EmpresaId, entity.UnidadeId, entity.DataInicio });

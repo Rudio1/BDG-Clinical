@@ -7,4 +7,6 @@ public sealed class FirstAccessSettings
     public string Path { get; set; } = "/primeiro-acesso";
 
     public int TokenExpirationHours { get; set; } = 168;
+
+    public string? PlatformLogoUrl { get; set; }
 }

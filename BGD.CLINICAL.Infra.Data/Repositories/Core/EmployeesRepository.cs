@@ -18,6 +18,7 @@ public sealed class EmployeesRepository : IEmployeesRepository
 
     public async Task<IReadOnlyList<Funcionario>> ListByEmpresaIdAsync(
         Guid empresaId,
+        Guid? unidadeId,
         bool includeInactive,
         CancellationToken cancellationToken = default)
     {
@@ -31,6 +32,17 @@ public sealed class EmployeesRepository : IEmployeesRepository
                     && _context.Unidades.Any(unidade =>
                         unidade.Id == vinculo.UnidadeId
                         && unidade.EmpresaId == empresaId))));
+
+        if (unidadeId.HasValue)
+        {
+            query = query.Where(funcionario => funcionario.Vinculos.Any(vinculo =>
+                vinculo.Ativo
+                && (vinculo.EmpresaId == empresaId
+                    || (vinculo.UnidadeId == unidadeId.Value
+                        && _context.Unidades.Any(unidade =>
+                            unidade.Id == unidadeId.Value
+                            && unidade.EmpresaId == empresaId)))));
+        }
 
         if (!includeInactive)
         {
