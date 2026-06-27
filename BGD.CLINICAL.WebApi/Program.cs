@@ -12,7 +12,10 @@ builder.Services.AddInfraData(builder.Configuration);
 builder.Services.AddExternalApis(builder.Configuration);
 builder.Services.AddAuth(builder.Configuration);
 builder.Services.AddTenantContext();
-builder.Services.AddDevelopmentCors();
+var corsOrigins = FrontendCorsExtensions.ResolveAllowedOrigins(
+    builder.Configuration,
+    builder.Environment);
+builder.Services.AddFrontendCors(builder.Configuration, builder.Environment);
 
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();
@@ -32,9 +35,9 @@ app.UseSwaggerUI(options =>
 
 app.UseHttpsRedirection();
 
-if (app.Environment.IsDevelopment())
+if (corsOrigins.Length > 0)
 {
-    app.UseCors(DevelopmentCorsExtensions.PolicyName);
+    app.UseCors(FrontendCorsExtensions.PolicyName);
 }
 
 app.UseApiExceptionHandling();
